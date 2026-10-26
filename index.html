@@ -25,6 +25,12 @@
     h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.08em; margin: 0 0 0.5rem; }
     #status { color: #8a8782; min-height: 1.5em; margin: 0; }
     #status.error { color: #e0705f; }
+    .toggle {
+      margin-top: 0.4rem; padding: 0.25rem 0.6rem;
+      background: #1c1c24; color: #b8b5b0; border: 1px solid #2c2c36;
+      border-radius: 6px; font: inherit; font-size: 0.75rem; cursor: pointer;
+    }
+    .toggle.on { color: #e8e6e3; border-color: #5b8dd9; }
     #monitor {
       position: fixed; left: 1rem; bottom: 1rem; z-index: 10;
       width: 300px; background: rgba(11, 11, 16, 0.7); border-radius: 8px;
@@ -43,6 +49,7 @@
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
     <p id="status">loading…</p>
+    <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>
   </div>
   <div id="monitor"></div>
   <script>

@@ -38,7 +38,8 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
       vec4 combine — see log). Orientation verified via `?gain=` A/B
       (low → screen bottom ✓). `?gain=low=1.5,...` live-tuning params
       landed with unit tests; gain=0 mutes a field.
-- [ ] Stage 3 — web-audio driver (mic + file), auto-gain normalization
+- [x] Stage 3 — web-audio driver (mic + file), auto-gain normalization,
+      onset-grid beat estimation with HUD toggle (3a–3g complete)
 - [ ] Stage 4 — osc driver + dumb UDP↔WebSocket bridge script (Node)
 - [ ] Stage 5 — midi driver (note→onset events, CC→continuums, clock→beatPhase)
 - [ ] Stage 6 — param recorder/playback (.jsonl), session UI polish
@@ -65,9 +66,48 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 3: web-audio driver (mic + file) — first real sound source,
-  auto-gain normalization
-- Cleanup note: `dyno.vec3(wob1, m, wob2)` in the wobble displacement is
-  the same suspect constructor — replace before trusting displacement
-- Open question: user visual confirmation of Stage 2b (hue rotation +
-  orientation) before commit
+- Stage 4: osc driver + dumb UDP↔WebSocket bridge script (Node)
+
+## Stage 3 plan — web-audio driver (drafted 2026-10-26, GO received)
+
+Goal: `?driver=web-audio` drives the splats from real sound — mic or an
+audio file — through the AVParams protocol, with auto-gain so quiet/loud
+rooms both produce full-range visuals.
+
+- [x] 3a. **Pure DSP core first, unit-tested** (`src/drivers/webaudio/dsp.js`):
+      band binning (protocol edges), energy = band's share of total spectral
+      energy (sqrt-compressed — shares are scale-free), centroid on a true
+      log 20Hz–20kHz scale (silence → neutral 0.5), flatness with relative
+      floor (sparse tone reads tonal, silence → 0), spectral flux +
+      adaptive running mean/variance for onset ratio.
+- [x] 3b. **Auto-gain** (`src/drivers/webaudio/autogain.js`): per-field
+      decaying peak tracker (instant rise, tau=8s decay, warmup holds the
+      first peak, 0.02 floor) → divide + clamp. centroid/flatness pass
+      through (scale-free by construction).
+- [x] 3c. **Driver wrapper** (`src/drivers/webaudio/index.js`):
+      AudioContext + AnalyserNode (fftSize 2048, smoothingTimeConstant 0 —
+      we own smoothing), mic via getUserMedia (echoCancellation etc. OFF)
+      or file via MediaElementSource (loops, also connected to destination).
+      dB→linear magnitude conversion happens here. poll(now) full pipeline.
+      Smoothing/envelope/autogain all in-driver per iron rule 1.
+- [x] 3d. **Wire-up**: main.js lazy-imports the driver only when
+      `?driver=web-audio` (`?source=mic|file`, file picker via dynamic
+      input element; cancel handled). Mock stays default; registry keeps
+      sync registration for the common case.
+- [x] 3e. **Cleanup carried in**: `dyno.vec3(wob1, m, wob2)` replaced with
+      per-component `dyno.combine({vectorType:'vec3', x,y,z})` on swizzled
+      center — the proven-reliable path.
+- [x] 3f. **Verify**: unit tests + check green (54 tests incl. beat).
+      **Remaining: user listens/looks** — mic → bass pulses the bottom,
+      hi-hats flicker the top, hits punch; `?source=file` with an audio
+      file; confirm autogain makes a quiet room still move the splats.
+- [x] 3g. **Beat estimation from onsets** (`src/drivers/webaudio/beat.js`,
+      user-requested): pure onset-grid autocorrelation — scan candidate
+      periods 60–300 BPM against a 6s onset window, densest consistent
+      grid wins; phase anchored at the last onset (onset = phase 0);
+      confidence = alignment score × missed-beat decay, gated at 0.6 so
+      speech never drives beatPhase (stays protocol-0). UI toggle button
+      in the HUD (`beat: on/off`), runtime switchable via
+      driver.setBeatEnabled(); `?beat=0` starts off. 8 new tests.
+
+Non-goals: no OSC/MIDI yet, no recording, no fancy latency tuning (Stage 7).

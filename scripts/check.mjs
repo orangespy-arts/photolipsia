@@ -36,6 +36,9 @@ const imp = spawnSync(
       './src/protocol/params.js',
       './src/drivers/registry.js',
       './src/drivers/mock.js',
+      './src/drivers/webaudio/dsp.js',
+      './src/drivers/webaudio/env.js',
+      './src/drivers/webaudio/autogain.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');

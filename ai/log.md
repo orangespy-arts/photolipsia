@@ -2,6 +2,61 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 3: web-audio driver (mic/file), autogain, beat estimation
+
+### What
+- **3a 纯 DSP 核心**（`src/drivers/webaudio/dsp.js`，无 Web Audio 依赖、Node
+  可测）：频段分箱按协议边界 20–250/250–2k/2k–16k；频段能量 = 该频段占全谱
+  能量份额（√压缩）——第一版"band 均值/全局 max"会稀释宽频段（high 频段
+  1400 bin 只有 11 个非零，hi-hat 信号 high 能量算出 0.099），份额法尺度
+  无关且不受 bin 数量惩罚；质心走真对数刻度 20Hz–20kHz（80Hz≈0.20、9kHz
+  ≈0.88），静音→中性 0.5；谱平坦度带相对下限（1e-6×max），稀疏音读作音调、
+  静音→0；onset 用 spectral flux + 运行均值/方差（~1s 时间常数）得 fluxRatio。
+- **3b 自动增益**（`autogain.js`）：每字段衰减峰值跟踪器——瞬时上升、τ=8s
+  缓降、warmup（前 40 帧）不缩顶、0.02 下限防除零。安静房间也能满量程。
+  centroid/flatness 尺度无关，直通不增益。
+- **3c 驱动封装**（`webaudio/index.js`）：AudioContext + AnalyserNode
+  （fftSize 2048，**smoothingTimeConstant=0**——平滑全归驱动器，铁律 1）。
+  mic：getUserMedia（echoCancellation/noiseSuppression/autoGainControl 全关）；
+  file：MediaElementSource 循环播放并接 destination。dB→线性幅度换算在此层。
+  poll() 全管线：analyze → autogain → attack(50ms)/release(200ms) follower
+  → flux 触发 + onset 充电衰减包络。
+- **3d 接线**：main.js 懒加载——只有 `?driver=web-audio` 时才 import 驱动
+  模块并请求麦克风权限；`?source=mic|file`，文件经动态 `<input type=file>`
+  选择器（取消有 focus 兜底）。mock 保持默认。
+- **3e 遗留清理**：avModifier.js 里可疑的 `dyno.vec3(wob1, m, wob2)`（Stage
+  2b 判定的坏构造器路径）替换为逐分量 `dyno.combine({vectorType:'vec3',
+  x,y,z})` + swizzle center——已验证可靠路径。Stage 2b 遗留项关闭。
+- **3g 节拍估计**（`beat.js`，用户请求：说话时 beatPhase 恒 0 → web-audio
+  加自估节拍 + 可关按钮）：纯 onset 栅格自相关——6s onset 滑窗，扫描
+  60–300 BPM 候选周期，栅格对齐分最高者胜（onset 落栅格线的接近度求和）；
+  相位锚定最后 onset（打击=相位 0）；置信度 = 对齐分 × 漏拍衰减（~4 拍归
+  0）。**置信门槛 0.6**：语音对齐分上不去 → beatPhase 保持协议 0。UI：
+  HUD `beat: on/off` 按钮，运行时经 driver.setBeatEnabled() 切换（关 =
+  跟踪器整个不跑）；`?beat=0` 默认关。八分音符等细分也能锁（maxBpm 300
+  覆盖细分栅格）。
+
+### 调试记录（3a/3g 的坑）
+- onset 包络第一版"先充电后衰减"→ 触发帧自己衰减了一格，改为先衰减后
+  充电（触发帧拿全额强度）。
+- 测试预期两处算错：release 衰减 100ms 只吃了 ~40% 不是 50%+（exp 物理）；
+  80Hz 质心在对数刻度上是 0.2065——这是**正确值**，是阈值写错不是代码错。
+- beat 周期换算漏 ×60：`1/maxBpm` 给 0.0056s 而非 0.333s，扫描范围错 180
+  倍导致锁到错误栅格。`60/maxBpm` 修正。
+- 语音用例伪随机序列能侥幸擦过 0.5 锁定线 → 锁定门槛提到 0.6 + 输出侧
+  二道门（score<0.6 时 confidence 恒 0）。
+- JS 语法坑：`-(i/width) ** 2` 是 SyntaxError（一元负号紧邻幂运算符），
+  需括号 `-((i/width) ** 2)`。
+
+### Verification
+- `npm test` 54 绿（+8 beat、+5 env、+6 autogain、+13 dsp，原 22）。
+- `npm run check` OK（导入 smoke 加了三个纯 DSP 模块）。
+- **用户听感确认**（3f/3g）：说话时 beat 行保持 0 ✓；节奏音乐锁定、视觉
+  踩点 ✓；HUD 开关实时切换 ✓。Stage 3 关闭。
+
+### Next
+- Stage 4：OSC 驱动 + 哑 UDP↔WebSocket 桥（Node），sanitize 在桥/驱动入口。
+
 ## 2026-10-26 — Stage 2b: hue rotation fixed, orientation verified, gain params
 
 ### What

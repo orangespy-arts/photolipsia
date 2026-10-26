@@ -53,12 +53,17 @@ export function createAvModifier() {
       const newScales = dyno.mul(scales, dyno.add(f(1), pulse));
 
       // ── displacement: audio-driven wobble (cheap trig noise) ──
+      // Components stay scalar and are merged via combineGsplat's center
+      // path — scalar vec3 constructors are a proven-bad dyno path (log).
       const wob1 = dyno.sin(dyno.add(dyno.mul(cx, f(3)), dyno.mul(uTime, f(1.7))));
       const wob2 = dyno.sin(dyno.add(dyno.mul(cz, f(3)), dyno.mul(uTime, f(1.3))));
-      const drift = dyno.mul(
-        dyno.vec3(wob1, dyno.mul(bandEnergy, f(0.5)), wob2),
-        dyno.mul(f(0.08), dyno.add(f(0.4), bandEnergy)));
-      const newCenter = dyno.add(center, drift);
+      const driftAmt = dyno.mul(f(0.08), dyno.add(f(0.4), bandEnergy));
+      const newCenter = dyno.combine({
+        vectorType: 'vec3',
+        x: dyno.add(dyno.swizzle(center, 'x'), dyno.mul(wob1, driftAmt)),
+        y: dyno.add(dyno.swizzle(center, 'y'), dyno.mul(dyno.mul(bandEnergy, f(0.5)), driftAmt)),
+        z: dyno.add(dyno.swizzle(center, 'z'), dyno.mul(wob2, driftAmt)),
+      });
 
       // ── color: centroid → hue rotation, band energy → brightness ──
       const hueAngle = dyno.mul(dyno.sub(uCentroid, f(0.5)), f(3.14159));

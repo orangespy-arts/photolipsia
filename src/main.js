@@ -26,18 +26,64 @@ const driverId = url.get('driver') ?? 'mock';
 const registry = createDriverRegistry();
 registry.register(createMockDriver({ kind: url.get('kind') ?? undefined }));
 
+// web-audio driver is loaded lazily: it's browser-only (AudioContext) and
+// mic permission should only be asked when actually requested
+async function buildDriver(id) {
+  if (id === 'web-audio') {
+    const { createWebAudioDriver } = await import('./drivers/webaudio/index.js');
+    const source = url.get('source') ?? 'mic';
+    let file = null;
+    if (source === 'file') {
+      file = await pickAudioFile();
+      if (!file) throw new Error('no file picked');
+    }
+    return createWebAudioDriver({ source, file });
+  }
+  return registry.get(id);
+}
+
+function pickAudioFile() {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'audio/*';
+    input.onchange = () => resolve(input.files[0] ?? null);
+    // user cancel fires no change event in all browsers; also resolve on focus regain
+    window.addEventListener('focus', () => setTimeout(() => resolve(null), 300), { once: true });
+    input.click();
+  });
+}
+
 const gains = parseGains(url.get('gain') ?? '');
 
-const driver = registry.get(driverId);
-if (!driver) {
-  setStatus(`unknown driver "${driverId}" — available: ${registry.ids().join(', ')}`, true);
-} else {
+const driverInfo = await buildDriver(driverId).catch((err) => ({ error: err }));
+const driver = driverInfo?.error ? null : driverInfo;
+if (driverInfo?.error) {
+  setStatus(`driver "${driverId}" failed: ${driverInfo.error.message}`, true);
+} else if (driver) {
   try {
     await driver.start();
     setStatus(`driver: ${driver.id}`);
+    wireBeatToggle(driver);
   } catch (err) {
     setStatus(`driver "${driver.id}" failed to start: ${err.message}`, true);
   }
+}
+
+// beat toggle button — only for drivers that estimate beat (web-audio).
+// ?beat=0 starts it off.
+function wireBeatToggle(d) {
+  const btn = document.getElementById('beat-toggle');
+  if (typeof d.setBeatEnabled !== 'function') return; // mock etc: keep hidden
+  btn.hidden = false;
+  const initial = url.get('beat') !== '0';
+  d.setBeatEnabled(initial);
+  const paint = () => {
+    btn.textContent = `beat: ${d.beatEnabled ? 'on' : 'off'}`;
+    btn.classList.toggle('on', d.beatEnabled);
+  };
+  paint();
+  btn.addEventListener('click', () => { d.setBeatEnabled(!d.beatEnabled); paint(); });
 }
 
 // ── splat stage ──
