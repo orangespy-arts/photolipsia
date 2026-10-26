@@ -11,23 +11,6 @@ import { dyno } from '@sparkjsdev/spark';
  * stores red=low at its bottom).
  */
 
-// GLSL hue rotation (YIQ space, cheap and good enough for AV)
-const HUE_GLSL = /* glsl */ `
-vec3 avHueShift(vec3 color, float angle) {
-  const mat3 toYiq = mat3(
-    0.299, 0.587, 0.114,
-    0.596, -0.274, -0.322,
-    0.211, -0.523, 0.312);
-  const mat3 toRgb = mat3(
-    1.0, 0.956, 0.621,
-    1.0, -0.274, -0.639,
-    1.0, -1.106, 1.703);
-  vec3 yiq = toYiq * color;
-  float a = angle;
-  yiq.yz = mat2(cos(a), -sin(a), sin(a), cos(a)) * yiq.yz;
-  return clamp(toRgb * yiq, 0.0, 1.0);
-}`;
-
 // numeric literal → dyno value (dyno.float() etc. cast DynoVals, not numbers)
 const f = (n) => dyno.dynoConst('float', n);
 
@@ -80,14 +63,15 @@ export function createAvModifier() {
       // ── color: centroid → hue rotation, band energy → brightness ──
       const hueAngle = dyno.mul(dyno.sub(uCentroid, f(0.5)), f(3.14159));
       const bright = dyno.add(f(1), dyno.mul(bandEnergy, f(0.6)));
-      const lit = dyno.mul(rgb, bright);
-      // Stage 2a: hue shift temporarily bypassed (color went black through
-      // the YIQ path); brightness only, re-enable once verified
+      // hueRotate returns the three rotated channels as scalars; they go
+      // straight into the vec4 combine (dyno.vec3(s,s,s) turned out to be
+      // an unreliable constructor — colors went grayscale through it).
+      const { rp, gp, bp } = hueRotateChannels(dyno.mul(rgb, bright), hueAngle);
       const newRgba = dyno.combine({
         vectorType: 'vec4',
-        x: dyno.swizzle(lit, 'x'),
-        y: dyno.swizzle(lit, 'y'),
-        z: dyno.swizzle(lit, 'z'),
+        x: rp,
+        y: gp,
+        z: bp,
         w: opacity,
       });
 
@@ -103,17 +87,29 @@ export function createAvModifier() {
   return { modifier, uniforms: { uLow, uMid, uHigh, uOnset, uCentroid, uTime } };
 }
 
-// inline GLSL statement node: vec3 avHueShift(color, angle)
-function avHueShiftExpr(color, angle) {
-  const node = new dyno.Dyno({
-    inTypes: { color: 'vec3', angle: 'float' },
-    outTypes: { shifted: 'vec3' },
-    statements: ({ inputs, outputs }) => [
-      `vec3 ${outputs.shifted} = avHueShift(${inputs.color}, ${inputs.angle});`,
-    ],
-    globals: () => [HUE_GLSL],
-  });
-  node.inputs.color = color;
-  node.inputs.angle = angle;
-  return node.outputs.shifted;
+// Hue rotation as pure dyno operators, returning scalar channels — NOT a
+// vec3. (`dyno.vec3(a,b,c)` grayscale-destroyed colors, like vec4-cast did;
+// root cause of both TBD, see log.) Math: Rodrigues rotation of the RGB
+// vector around the grey axis (1,1,1)/√3 — the classic exact hue rotation.
+// angle 0 → exact identity, verified by probe A/B.
+function hueRotateChannels(rgb, angle) {
+  const cosA = dyno.cos(angle);
+  const sinA = dyno.sin(angle);
+  const k = dyno.sub(f(1), cosA);
+  const r = dyno.swizzle(rgb, 'x');
+  const g = dyno.swizzle(rgb, 'y');
+  const b = dyno.swizzle(rgb, 'z');
+  const sum = dyno.add(r, dyno.add(g, b));
+  const k3 = dyno.mul(k, f(1 / 3));
+  const rp = dyno.add(dyno.mul(r, cosA),
+    dyno.add(dyno.mul(k3, sum), dyno.mul(sinA, dyno.sub(g, b))));
+  const gp = dyno.add(dyno.mul(g, cosA),
+    dyno.add(dyno.mul(k3, sum), dyno.mul(sinA, dyno.sub(b, r))));
+  const bp = dyno.add(dyno.mul(b, cosA),
+    dyno.add(dyno.mul(k3, sum), dyno.mul(sinA, dyno.sub(r, g))));
+  return {
+    rp: dyno.clamp(rp, f(0), f(1)),
+    gp: dyno.clamp(gp, f(0), f(1)),
+    bp: dyno.clamp(bp, f(0), f(1)),
+  };
 }

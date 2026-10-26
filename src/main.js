@@ -1,6 +1,7 @@
 import { sanitizeParams } from './protocol/params.js';
 import { createDriverRegistry } from './drivers/registry.js';
 import { createMockDriver } from './drivers/mock.js';
+import { parseGains, applyGains } from './mapping/gains.js';
 import { createSplatStage } from './render/stage.js';
 import { createMonitor } from './ui/monitor.js';
 
@@ -23,7 +24,9 @@ const url = new URLSearchParams(location.search);
 const driverId = url.get('driver') ?? 'mock';
 
 const registry = createDriverRegistry();
-registry.register(createMockDriver());
+registry.register(createMockDriver({ kind: url.get('kind') ?? undefined }));
+
+const gains = parseGains(url.get('gain') ?? '');
 
 const driver = registry.get(driverId);
 if (!driver) {
@@ -61,7 +64,7 @@ function frameLoop() {
 
     if (driver) {
       const frame = sanitizeParams(driver.poll(now)).params;
-      stage.updateParams(frame, dt);
+      stage.updateParams(applyGains(frame, gains), dt);
       monitor.update(frame);
     }
     stage.render(now);

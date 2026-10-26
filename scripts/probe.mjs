@@ -92,27 +92,6 @@ await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, dev
 await send('Page.navigate', { url });
 await sleep(2500);
 
-// quick dyno API introspection (remove after Stage 2 stabilizes)
-const api = await send('Runtime.evaluate', {
-  expression: `(async () => {
-    const mod = await import('/node_modules/@sparkjsdev/spark/dist/spark.module.js');
-    const d = mod.dyno;
-    const g = new mod.SplatMesh({ construct: (count = 1) => [{
-      position: [0,0,0], scale: [0.1,0.1,0.1], quaternion: [1,0,0,0],
-      color: [1,0,0], opacity: 1,
-    }] });
-    const split = d.splitGsplat(null);
-    return JSON.stringify({
-      dynoKeys: Object.keys(d).slice(0, 60),
-      splitIsDyno: typeof split,
-      splitOutputs: split.outputs ? Object.keys(split.outputs) : null,
-    });
-  })()`,
-  returnByValue: true,
-  awaitPromise: true,
-});
-console.log('dyno api:', api.result.value);
-
 await sleep(seconds * 1000);
 
 const shot = await send('Page.captureScreenshot', { format: 'png' });

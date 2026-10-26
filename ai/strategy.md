@@ -33,9 +33,11 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
       trig-wobble displacement, brightness response — all per-splat on GPU
       via `SplatMesh.objectModifier`. Hue rotation written but bypassed
       (YIQ path blackened colors; re-enable with a color-isolation test).
-- [ ] Stage 2b — verify region orientation with mock `ramp` (low must light
-      the screen-bottom red zone), re-enable hue shift, parametrize response
-      gains (?gain= URL overrides for live tuning)
+- [x] Stage 2b — hue rotation fixed (root cause: `dyno.vec3(a,b,c)`
+      constructor corrupts output; rotated channels go straight into the
+      vec4 combine — see log). Orientation verified via `?gain=` A/B
+      (low → screen bottom ✓). `?gain=low=1.5,...` live-tuning params
+      landed with unit tests; gain=0 mutes a field.
 - [ ] Stage 3 — web-audio driver (mic + file), auto-gain normalization
 - [ ] Stage 4 — osc driver + dumb UDP↔WebSocket bridge script (Node)
 - [ ] Stage 5 — midi driver (note→onset events, CC→continuums, clock→beatPhase)
@@ -63,9 +65,9 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 2b: region-orientation A/B via mock `ramp`, hue-shift isolation fix,
-  `?gain=` URL params for live tuning
-- Stage 3 next after that: web-audio driver (mic + file) — first real sound
-  source, auto-gain normalization
-- Open question: user visual confirmation of Stage 2 breathing/wobble before
-  commit
+- Stage 3: web-audio driver (mic + file) — first real sound source,
+  auto-gain normalization
+- Cleanup note: `dyno.vec3(wob1, m, wob2)` in the wobble displacement is
+  the same suspect constructor — replace before trusting displacement
+- Open question: user visual confirmation of Stage 2b (hue rotation +
+  orientation) before commit
