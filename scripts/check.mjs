@@ -13,6 +13,13 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const report = { summary: 'ok', tests: null, imports: null, timestamp: new Date().toISOString() };
 let failed = false;
 
+// 0. ensure the test splat exists (regenerable, gitignored)
+const splatGen = spawnSync(process.execPath, ['scripts/make-test-splat.mjs'], { cwd: ROOT, encoding: 'utf8' });
+if (splatGen.status !== 0) {
+  failed = true; report.summary = 'test splat generation failed';
+  report.splat = splatGen.stderr;
+}
+
 // 1. unit tests
 const t = spawnSync(process.execPath, ['--test', 'test/**/*.test.js'], { cwd: ROOT, encoding: 'utf8' });
 report.tests = {

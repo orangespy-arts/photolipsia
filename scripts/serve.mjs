@@ -28,6 +28,8 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     let path = decodeURIComponent(url.pathname);
     if (path === '/') path = '/index.html';
+    // Vite convention: /splats/* is served from public/splats/*
+    if (path.startsWith('/splats/')) path = '/public' + path;
     const file = join(ROOT, path);
     if (!file.startsWith(ROOT)) {
       res.writeHead(403).end('forbidden');

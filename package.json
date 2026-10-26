@@ -8,5 +8,9 @@
     "test": "node --test \"test/**/*.test.js\"",
     "check": "node scripts/check.mjs",
     "dev": "node scripts/serve.mjs"
+  },
+  "dependencies": {
+    "@sparkjsdev/spark": "^2.4.0",
+    "three": "^0.186.1"
   }
 }

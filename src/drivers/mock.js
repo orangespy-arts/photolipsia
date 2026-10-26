@@ -42,11 +42,11 @@ export function createMockDriver({ kind = 'pulse', fps = 60 } = {}) {
         p.centroid = cyc;
         p.flatness = 0.1;
       }
-      for (const v of [p.rms, p.bands.low, p.bands.mid, p.bands.high,
-                       p.centroid, p.flatness, p.onset]) {
-        // mock values are constructed in-range; clamp for safety anyway
+      // rms follows band energy for pulse/ramp (log-ish sum, clamped)
+      if (p.rms === 0) {
+        p.rms = Math.min(1, Math.max(0,
+          (p.bands.low + p.bands.mid + p.bands.high) / 3));
       }
-      p.rms = Math.min(1, Math.max(0, p.rms ?? (p.bands.low + p.bands.mid + p.bands.high) / 3));
       frame++;
       return p;
     },
