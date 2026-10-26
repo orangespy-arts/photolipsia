@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photolipsia</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; background: #0b0b10; color: #e8e6e3;
+      font: 14px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace;
+      padding: 2rem;
+    }
+    h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.08em; }
+    #status { color: #8a8782; min-height: 1.5em; }
+    #status.error { color: #e0705f; }
+    #monitor { max-width: 480px; margin-top: 1.5rem; }
+    .row { display: grid; grid-template-columns: 64px 1fr 48px; gap: 0.6em; align-items: center; margin: 0.35rem 0; }
+    .label { color: #8a8782; font-size: 0.8rem; }
+    .bar { height: 8px; background: #1c1c24; border-radius: 4px; overflow: hidden; }
+    .fill { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, #5b8dd9, #d9c25b); border-radius: 4px; }
+    .value { text-align: right; font-size: 0.8rem; color: #b8b5b0; }
+    .meta { color: #6a6762; font-size: 0.8rem; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>PHOTOLIPSIA</h1>
+  <p id="status">loading…</p>
+  <div id="monitor"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

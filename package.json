@@ -1,0 +1,12 @@
+{
+  "name": "photolipsia",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A generic Gaussian-splat audiovisual visualizer — any DSP source, one protocol.",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "check": "node scripts/check.mjs",
+    "dev": "node scripts/serve.mjs"
+  }
+}

@@ -1,0 +1,14 @@
+node_modules/
+.check/
+*.log
+.DS_Store
+Thumbs.db
+
+# large binaries — never in git (back them up separately)
+public/splats/
+*.ply
+*.spz
+*.rad
+*.ksplat
+*.sog
+*.splat
