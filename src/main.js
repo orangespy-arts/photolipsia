@@ -24,6 +24,31 @@ function setReady() {
 const url = new URLSearchParams(location.search);
 const driverId = url.get('driver') ?? 'mock';
 
+const DRIVERS = ['mock', 'web-audio', 'osc', 'midi', 'playback'];
+// clickable driver row: switching drivers is a navigation — each driver owns
+// page-lifecycle state (AudioContext, WS socket, MIDI access) that a reload
+// releases cleanly
+function wireDriverRow(current) {
+  const row = document.getElementById('driver-row');
+  if (!row) return;
+  for (const id of DRIVERS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'toggle' + (id === current ? ' current' : '');
+    btn.textContent = id;
+    btn.addEventListener('click', () => {
+      if (id === current) return;
+      const next = new URLSearchParams(location.search);
+      next.set('driver', id);
+      next.delete('kind'); next.delete('source'); next.delete('simulate');
+      next.delete('rec'); // driver-specific params would mislead the next driver
+      location.href = `?${next}`;
+    });
+    row.appendChild(btn);
+  }
+}
+wireDriverRow(driverId);
+
 const registry = createDriverRegistry();
 registry.register(createMockDriver({ kind: url.get('kind') ?? undefined }));
 
