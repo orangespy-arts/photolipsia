@@ -2,6 +2,57 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 5: MIDI driver (+ simulator, no hardware needed)
+
+### What
+- **5a 纯核心**（`src/drivers/midi/midiCore.js`，Node 可测）：设备即 DSP 端
+  ——velocity 0–127 → /127 直接是协议值（铁律 2 免费拿），驱动器只做组装：
+  - note on (vel>0) → 事件 {type:'note', pitch, velocity, time} +
+    **velocity 缩放的 onset 充电**（重键狠、轻键柔——"onset 不是布尔"的
+    MIDI 版）；note off 和 vel-0 note-on（MIDI 规范等价）→ velocity-0 事件
+  - CC 映射表 `CC_MAP`：1 调制轮/11 表情 → bands.mid（follower 平滑）、
+    64 延音踏板 → bands.high（踩下保持、松开衰减）、74 brightness →
+    centroid（直通）。未列的 CC 忽略——扩表须连协议文档一起改
+  - pitch bend 14 位（8192 中位）→ centroid
+  - **MIDI clock 0xF8 → beatPhase** = ticks%24/24：真节拍源（对比
+    web-audio 的自估器）；0xFA/0xFB 重置 tick 计数，停摆 >2s 自动失效
+    （协议：无节拍源 → 恒 0）
+  - 通道位忽略；poll() 组装完整帧（铁律 3：衰减在此发生、保持在此保持）
+- **5b 浏览器封装**（`index.js`）：requestMIDIAccess({sysex:false})、绑定
+  全部输入口、ev.timeStamp/1000 作事件时钟（与 poll 同源 performance.now）、
+  热插拔 onstatechange、设备名暴露给状态行。
+- **5c** `?driver=midi` 懒加载；状态行显示设备名。
+- **模拟演奏器**（`simulate.js` + `?driver=midi&simulate=1`）——用户没有
+  MIDI 键盘，这成为正式验证路径：脚本化 8s 循环（120bpm kick 强弱交替、
+  每 eighth hi-hat、CC1 正弦、CC74 扫频、真 MIDI clock 字节流）喂给**与
+  硬件完全相同的字节路径**（bytes → core → 协议 → 渲染）。anchor() 把
+  调度锚在首次 poll 的墙上时钟，避免页面晚载导致的爆发回放。
+
+### 调试记录
+- **事件窗口重复**：generate 的边界含等号（`<= to`）让同一边界时刻被相邻
+  两片都发一次（kicks 出现 0.5, 0.5）。改半开区间 `[from, to)` + 1e-9 容
+  差的 `ceil(from/step - 1e-9)` 起点——边界时刻由"从它开始的那片"发且只
+  发一次。连续 60fps 调用下语义正确。
+- 测试计数预期连错两次（120bpm 一秒 2 拍不是 4 拍；半开区间端点不属本窗
+  口）——对着字节流打印修正。
+- 60fps 采样 48Hz clock：相邻帧 phase 可能相等（本帧无新 tick）——断言
+  改为"前进/相等/回绕"三态合法。
+- midiCore 第一版有个 feed2/origFeed 间接层（feed 返回值再收集）——重写
+  为 feed 直接改状态、poll 只组装，接口诚实。
+
+### Verification
+- `npm test` 94 绿（+15 midiCore、+6 simulator/full-chain）。
+- `npm run check` OK（midiCore 进导入 smoke）。
+- 全链路测试证明：模拟字节流 → core → 协议帧，2s 内 onset 充放电、
+  centroid 扫频、beatPhase 按 120bpm 步进回绕、事件数正确。
+- **用户确认**：`?driver=midi&simulate=1` 验证通过——状态栏 `driver: midi
+  — simulated performance`，视觉随 8s 循环呼吸/跳动/变色，beat 行 120bpm
+  步进。真硬件路径（`?driver=midi` 不带 simulate）留待有设备时验证。
+  Stage 5 关闭。
+
+### Next
+- Stage 6：参数录制/回放（.jsonl）、会话 UI 打磨。
+
 ## 2026-10-26 — Stage 4: OSC driver + dumb UDP↔WebSocket bridge
 
 ### What

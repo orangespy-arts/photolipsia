@@ -41,6 +41,7 @@ const imp = spawnSync(
       './src/drivers/webaudio/autogain.js',
       './src/drivers/osc/oscDecode.js',
       './src/drivers/osc/oscMap.js',
+      './src/drivers/midi/midiCore.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');

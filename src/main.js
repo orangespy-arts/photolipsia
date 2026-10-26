@@ -44,6 +44,12 @@ async function buildDriver(id) {
     const osc = url.get('osc') ?? 'localhost:9128';
     return createOscDriver({ url: `ws://${osc}` });
   }
+  if (id === 'midi') {
+    const { createMidiDriver } = await import('./drivers/midi/index.js');
+    // ?simulate=1 — scripted performance through the real byte path
+    // (no controller needed); ?beat=0 still works to hide the beat row
+    return createMidiDriver({ simulate: url.get('simulate') === '1' });
+  }
   return registry.get(id);
 }
 
@@ -68,7 +74,7 @@ if (driverInfo?.error) {
 } else if (driver) {
   try {
     await driver.start();
-    setStatus(`driver: ${driver.id}`);
+    setStatus(`driver: ${driver.id}${driver.devices?.length ? ` — ${driver.devices.join(', ')}` : ''}`);
     wireBeatToggle(driver);
   } catch (err) {
     setStatus(`driver "${driver.id}" failed to start: ${err.message}`, true);

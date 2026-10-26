@@ -42,7 +42,9 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
       onset-grid beat estimation with HUD toggle (3a–3g complete)
 - [x] Stage 4 — osc driver + dumb UDP↔WebSocket bridge (Node); E2E
       verified by user (test-sender → bridge → browser, monitor bars live)
-- [ ] Stage 5 — midi driver (note→onset events, CC→continuums, clock→beatPhase)
+- [x] Stage 5 — midi driver: note→events+onset, CC table→continuums,
+      clock→beatPhase (real beat source); + simulate=1 scripted
+      performance (no hardware needed); +6 sim/full-chain tests (94 total)
 - [ ] Stage 6 — param recorder/playback (.jsonl), session UI polish
 - [ ] Stage 7 — performance hardening: fixed 60fps path, latency check,
       multi-screen, full-offline rehearsal checklist
@@ -67,7 +69,42 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 5: midi driver (note→onset events, CC→continuums, clock→beatPhase)
+- Stage 6: param recorder/playback (.jsonl), session UI polish
+
+## Stage 5 plan — MIDI driver (drafted 2026-10-26, GO received)
+
+Goal: `?driver=midi` — a MIDI controller/keyboard drives the splats live.
+Web MIDI API (Chrome/Edge; permission model like web-audio: lazy load,
+ask only when selected). Unlike web-audio (we analyze), here the *device*
+is the DSP side: note velocity IS the normalized value (0–127 → /127),
+protocol iron rule 2 mostly comes free — the driver's job is assembly,
+not analysis.
+
+- [x] 5a. **Pure MIDI→AVParams core** (`src/drivers/midi/midiCore.js`,
+      Node-testable): note on (vel>0) → event + velocity-scaled onset
+      charge; note off (incl. vel-0 note-on per MIDI spec) → velocity-0
+      event; CC_MAP {1,11→mid, 64→high, 74→centroid} with follower
+      smoothing on band targets, centroid direct; pitch bend 14-bit →
+      centroid; clock 0xF8 → beatPhase = ticks%24/24 (real beat source),
+      0xFA/0xFB reset ticks, stall >2s → clockInactive → phase 0.
+      Channel bits ignored. poll() assembles complete frames (iron rule 3).
+- [x] 5b. **Browser wrapper** (`src/drivers/midi/index.js`):
+      requestMIDIAccess({sysex:false}), binds ALL inputs, routes with
+      ev.timeStamp/1000 as atSec (same performance.now clock), hot-plug
+      via onstatechange, device list exposed for the status line.
+- [x] 5c. **Wire-up**: `?driver=midi` lazy import; status line shows
+      connected device names.
+- [x] 5d. **Verify**: `npm test` 88 green (+15 MIDI), `npm run check` OK
+      (midiCore in import smoke). **Remaining: user verifies with a real
+      controller** — keys → onset punch + note events in monitor; mod
+      wheel → mid swells; sustain → high presence; sequencer clock →
+      beat row stepping at true tempo.
+
+Non-goals held: no MPE, no sysex, no per-note polyphonic expression.
+
+Non-goals: no MPE, no sysex, no per-note polyphonic expression, no
+audio-rate MIDI. Events stay sparse/protocol-shaped (no per-splat notes
+yet — that's a mapping-layer question for later).
 
 ## Stage 4 plan — OSC driver + dumb bridge (drafted 2026-10-26, GO received)
 
