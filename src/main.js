@@ -200,7 +200,13 @@ document.getElementById('help-toggle').addEventListener('click', () => {
 });
 
 // ── splat stage ──
-const stage = createSplatStage({ canvas, splatUrl: '/splats/test.ply' });
+// ?splat=/splats/your.ply — bring your own scene; any .ply (3DGS) or .splat
+// file under public/ works. The y-down→y-up flip and dyno modifier apply to
+// whatever loads here.
+const stage = createSplatStage({
+  canvas,
+  splatUrl: url.get('splat') ?? '/splats/test.ply',
+});
 stage.ready ? setStatus('splat loaded') : watchSplat();
 function watchSplat() {
   const check = setInterval(() => {
