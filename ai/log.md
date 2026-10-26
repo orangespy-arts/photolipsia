@@ -2,6 +2,53 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 2: per-splat GPU audio deformation (dyno)
+
+### What
+- `src/render/avModifier.js`: a `dynoBlock` Gsplat→Gsplat modifier wired to
+  `SplatMesh.objectModifier`. Audio state travels as 6 uniforms
+  (uLow/uMid/uHigh/uOnset/uCentroid/uTime) updated per frame from JS;
+  per-splat math runs in GLSL:
+  - region-band scale pulse (mirrors mapping/visual.js regionEnergy,
+    triangular weights 0.15/0.5/0.85 + 0.1 floor)
+  - trig-wobble displacement scaled by band energy (breathing drift)
+  - brightness response to band energy
+  - hue rotation via custom statement Dyno (YIQ) — **written, bypassed**:
+    colors went black through that path; needs an isolation test (Stage 2b)
+- `stage.js` updateParams feeds uniforms with a light extra smoothing
+  (dt*30 ramp) to avoid pops on live edits.
+- Height mapping: object-space y is flipped by the y-down→y-up quaternion,
+  so screen height = 0.5 − cy·0.5 (verified visually via the red zone).
+
+### Dyno API lessons (hard-won, keep for Unity-era reference)
+- `dyno.float(x)` is a **cast of a DynoVal**, NOT a literal constructor —
+  numeric literals go through `dyno.dynoConst('float', x)`.
+- `dyno.splitGsplat(g)` returns a Dyno node; fields live on `.outputs`
+  (center/scales/rgba/rgb/opacity/x/y/z/...).
+- DynoVals have no `.x/.y` JS accessors — components need `dyno.swizzle`
+  or the pre-split outputs.
+- `dyno.vec4(vec3val)` compiles to GLSL `vec4(v)` (alpha implicit) which
+  fails validation ("not enough data for construction") — build vec4 via
+  `dyno.combine({vectorType:'vec4', x,y,z,w})`.
+- Custom GLSL: `new dyno.Dyno({ statements, globals })` works fine for
+  inline helper functions (avHueShift lives in globals).
+- `dynoBlock` construct callback receives `(inputs, outputs, {roots})` —
+  inputs are used directly, not via `.outputs`.
+- Full dyno API surface introspectable at runtime via the probe
+  (`Object.keys(dyno)`).
+
+### Verification
+- `npm run check` OK; probe: shader compiles (only a benign
+  signed/unsigned warning), 6500 splats, ready, breathing + wobble visible
+  in screenshots (.check/probe.png), monitor bars live.
+- User screenshots archived: `ai/stage1.png` (Stage 1 — static ring,
+  whole-object breathing only) vs `ai/stage2.png` (Stage 2 — ring visibly
+  warped by the wobble displacement, brightness pulsing). The ring is the
+  tell: it deforms non-uniformly, which only per-splat displacement can do.
+
+### Next
+- Stage 2b: orientation A/B via mock ramp, hue isolation test, gain params.
+
 ## 2026-10-26 — Stage 1: Spark rendering, first splat breathing
 
 ### What

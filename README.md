@@ -14,6 +14,19 @@
 核心原则：**visualizer 只认协议，不认来源**。接一个新 DSP = 写一个新驱动器，
 visualizer 本体永远不动。
 
+## 效果
+
+**Stage 1 — 渲染基础**（`ai/stage1.png`）：测试 splat 全屏渲染，
+mock 驱动下整体呼吸。
+
+![Stage 1](ai/stage1.png)
+
+**Stage 2 — per-splat GPU 音频变形**（`ai/stage2.png`）：同一测试 splat，
+音频驱动进 GPU dyno graph 后——圆环随波动扭曲、表面起伏、亮度随频段能量脉动。
+对比 Stage 1 的静止圆环即可看出 per-splat 位移在工作。
+
+![Stage 2](ai/stage2.png)
+
 ## 快速开始
 
 ```sh

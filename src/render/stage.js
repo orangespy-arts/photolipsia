@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
+import { createAvModifier } from './avModifier.js';
 
 /**
  * SplatStage — owns the three.js scene and the splat, applies audio-driven
@@ -25,6 +26,10 @@ export function createSplatStage({ canvas, splatUrl }) {
   splat.quaternion.array = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // y-down → y-up
   splat.scale.setScalar(1);
   scene.add(splat);
+
+  // ── Stage 2: per-splat audio deformation (GPU dyno graph) ──
+  const av = createAvModifier();
+  splat.objectModifier = av.modifier;
 
   // SparkRenderer is the actual splat-drawing pass (a THREE.Mesh attached
   // to the camera) — without it the canvas stays black even though the
@@ -66,16 +71,21 @@ export function createSplatStage({ canvas, splatUrl }) {
    */
   function updateParams(params, dt) {
     if (!ready) return;
-    // bands average as the breathing driver (low-weighted)
+    // feed the GPU dyno graph (its own smoothing is the protocol's job —
+    // driver already smoothed; we only ramp gently to avoid pops on edits)
+    av.uniforms.uLow.value += (params.bands.low - av.uniforms.uLow.value) * Math.min(1, dt * 30);
+    av.uniforms.uMid.value += (params.bands.mid - av.uniforms.uMid.value) * Math.min(1, dt * 30);
+    av.uniforms.uHigh.value += (params.bands.high - av.uniforms.uHigh.value) * Math.min(1, dt * 30);
+    av.uniforms.uOnset.value = params.onset;
+    av.uniforms.uCentroid.value = params.centroid;
+    av.uniforms.uTime.value = params.time;
+
+    // gentle whole-object scale remains (Stage 1 behavior, now secondary
+    // to the per-splat region response)
     const breathe = params.bands.low * 0.7 + params.bands.mid * 0.2 + params.bands.high * 0.1;
-    const target = 1 + breathe * 0.25 + params.onset * 0.35;
-    // smooth toward target — visual tempo, deliberately slower than audio
+    const target = 1 + breathe * 0.08 + params.onset * 0.1;
     const k = 1 - Math.exp(-dt * 12);
     splat.scale.setScalar(splat.scale.x + (target - splat.scale.x) * k);
-
-    // hue rotation from spectral centroid
-    const hueShift = (params.centroid - 0.5) * 0.3;
-    hueApplied = hueShift;
   }
 
   function render(timeSeconds) {

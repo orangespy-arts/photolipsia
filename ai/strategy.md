@@ -23,11 +23,19 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 - [x] Stage 0 — repo skeleton: AGENTS.md/CLAUDE.md, protocol doc + validation
       with unit tests, driver registry + mock driver, dev server, check script
-- [ ] Stage 1 — splat rendering: pick a viewer core (candidates: Spark,
-      gsplat.js, @mkkellogg/gaussian-splats-3d), load a test splat, render
-      fullscreen canvas
-- [ ] Stage 2 — mapping layer: protocol → per-splat transforms (scale pulse,
-      displacement, color), pure functions + unit tests
+- [x] Stage 1 — splat rendering: **Spark** selected (v2.4.0, MIT, World Labs;
+      Dyno shader-graph = per-splat GPU mutation, the decisive factor; gsplat.js
+      and @mkkellogg/gaussian-splats-3d rejected). Test splat renders
+      fullscreen, breathing verified. Import map added (zero-bundler cost).
+- [x] Stage 2 — mapping layer: protocol → per-splat transforms (scale pulse,
+      displacement, color), pure functions + unit tests. **Core landed as GPU
+      dyno graph** (`src/render/avModifier.js`): region-band scale pulse,
+      trig-wobble displacement, brightness response — all per-splat on GPU
+      via `SplatMesh.objectModifier`. Hue rotation written but bypassed
+      (YIQ path blackened colors; re-enable with a color-isolation test).
+- [ ] Stage 2b — verify region orientation with mock `ramp` (low must light
+      the screen-bottom red zone), re-enable hue shift, parametrize response
+      gains (?gain= URL overrides for live tuning)
 - [ ] Stage 3 — web-audio driver (mic + file), auto-gain normalization
 - [ ] Stage 4 — osc driver + dumb UDP↔WebSocket bridge script (Node)
 - [ ] Stage 5 — midi driver (note→onset events, CC→continuums, clock→beatPhase)
@@ -55,8 +63,9 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 1: evaluate splat viewer libs against: ES module friendly, per-splat
-  attribute access (scale/color/position mutation per frame), license, .ply/.spz
-  support. Write findings into `docs/architecture.md` before committing code.
-- Open question for the user: where do the first test splats come from?
-  (course kit's test-splat generator script, own scans, procedural?)
+- Stage 2b: region-orientation A/B via mock `ramp`, hue-shift isolation fix,
+  `?gain=` URL params for live tuning
+- Stage 3 next after that: web-audio driver (mic + file) — first real sound
+  source, auto-gain normalization
+- Open question: user visual confirmation of Stage 2 breathing/wobble before
+  commit

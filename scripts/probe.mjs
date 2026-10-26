@@ -72,6 +72,10 @@ ws.onmessage = (ev) => {
   if (msg.method === 'Runtime.consoleAPICalled') {
     const text = msg.params.args.map((a) => a.value ?? a.description ?? '').join(' ');
     console.log(`[console.${msg.params.type}] ${text}`);
+    if (text.includes('FRAGMENT') || text.includes('VERTEX')) {
+      // three.js logs shader source after the error marker — keep it visible
+      setTimeout(() => {}, 0);
+    }
   } else if (msg.method === 'Runtime.exceptionThrown') {
     const d = msg.params.exceptionDetails;
     console.log(`[EXCEPTION] ${d.exception?.description ?? d.text}`);
@@ -86,6 +90,28 @@ await send('Log.enable');
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
 await send('Page.navigate', { url });
+await sleep(2500);
+
+// quick dyno API introspection (remove after Stage 2 stabilizes)
+const api = await send('Runtime.evaluate', {
+  expression: `(async () => {
+    const mod = await import('/node_modules/@sparkjsdev/spark/dist/spark.module.js');
+    const d = mod.dyno;
+    const g = new mod.SplatMesh({ construct: (count = 1) => [{
+      position: [0,0,0], scale: [0.1,0.1,0.1], quaternion: [1,0,0,0],
+      color: [1,0,0], opacity: 1,
+    }] });
+    const split = d.splitGsplat(null);
+    return JSON.stringify({
+      dynoKeys: Object.keys(d).slice(0, 60),
+      splitIsDyno: typeof split,
+      splitOutputs: split.outputs ? Object.keys(split.outputs) : null,
+    });
+  })()`,
+  returnByValue: true,
+  awaitPromise: true,
+});
+console.log('dyno api:', api.result.value);
 
 await sleep(seconds * 1000);
 
