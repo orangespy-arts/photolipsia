@@ -202,6 +202,7 @@ function frameLoop() {
       if (recorder) recorder.add({ ...visible, time: frame.time });
       stage.updateParams(visible, dt);
       monitor.update(frame);
+      window.__LAST_ONSET__ = visible.onset; // probe latency audit hook
       if (recorder) {
         const secs = (performance.now() - recStartedAt) / 1000;
         recBtn.textContent = `rec: ● ${secs.toFixed(0)}s`;
