@@ -21,6 +21,7 @@ const MIME = {
   '.ply': 'application/octet-stream',
   '.spz': 'application/octet-stream',
   '.rad': 'application/octet-stream',
+  '.jsonl': 'application/x-ndjson',
 };
 
 const server = createServer(async (req, res) => {
@@ -30,6 +31,8 @@ const server = createServer(async (req, res) => {
     if (path === '/') path = '/index.html';
     // Vite convention: /splats/* is served from public/splats/*
     if (path.startsWith('/splats/')) path = '/public' + path;
+    // recordings: /rec/* is served from public/rec/*
+    if (path.startsWith('/rec/')) path = '/public' + path;
     const file = join(ROOT, path);
     if (!file.startsWith(ROOT)) {
       res.writeHead(403).end('forbidden');

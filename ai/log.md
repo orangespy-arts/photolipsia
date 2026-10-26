@@ -2,6 +2,53 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 6: param recorder/playback + session UI
+
+### What
+- **6a 录制器**（`src/rec/record.js`，纯、Node 可测）：环形缓冲默认
+  18000 帧（60Hz×5min），旧帧滚落并计 dropped；`toJSONL()` 导出；
+  `recordingName()` 生成可排序文件名（rec-驱动-日期-时间.jsonl）。
+  **格式 = 协议帧本身**：一行一帧 JSON，version 字段随行——录制文件是
+  协议合法的帧流，未来 Unity 轨道读同一格式，record/play 两层保持哑。
+- **6b 回放读取器**（`src/rec/play.js`，纯）：parseRecording——垃圾行
+  （JSON 解析错误**和** sanitize 错误）**整行丢弃并计数**，不致命；
+  尾行截断（写盘中途崩溃）只丢那一帧；防御性时间升序排序；`frameAt(t)`
+  二分查找，exact-frame 语义（time ≤ t 的最后一帧生效，起点前 → null
+  由调用方决定Hold/gap）。**不添加任何平滑**——录制的是驱动器平滑后
+  的值，铁律 1 跨录制/回放往返保持。
+- **6c 回放驱动**（`src/drivers/playback.js`）：首次 poll 把墙上时钟
+  锚定到录制起点+t0；默认循环（回绕），loop=false 钳制到末帧保持；
+  帧原样重发（source 标 'playback'，不改动录制的帧——磁盘上 source
+  保持原驱动）。
+- **6d 录制接线**：HUD `rec` 按钮切换；录的是**后增益帧**（渲染可见值
+  ——所见即所录，?gain= 的调参结果一起进录制）；录制中按钮显示秒数；
+  停止 → Blob 下载，状态栏报帧数。
+- **6e 验证**：+13 测试（往返、环形缓冲、垃圾容忍、exact-frame、
+  不可信文件门、回放驱动锚定/偏移/循环/无变异），107 总绿。
+- **6f UI 打磨**：HUD 按钮一行化（beat / rec / ?），`?` 帮助面板列出
+  全部 URL 参数—— Stage 0 攒到现在的 ?driver/?kind/?source/?simulate/
+  ?osc/?rec/?t0/?gain/?beat 一页可见。
+- serve.mjs 加 `/rec/*` → `public/rec/*` 映射 + .jsonl MIME。
+
+### 调试记录
+- 垃圾行判定第一版用启发式（sanitize 后全零且有错误 → 丢弃）——
+  `{"rms":"loud","time":1}` sanitize 成 rms=0/time=1 被误判有效。改成
+  干脆的规则：**sanitize 有 errors = 整行丢弃**。比"钳制后收下"更严格
+  的理由：录制文件验证失败说明文件可疑，丢帧好过修帧（与 OSC 入口的
+  sanitize-then-use 不同——那是实时流，那是档案）。
+- 回放驱动测试里 first-poll 锚定语义：锚定发生**在首次 poll**，所以
+  测试必须先 poll(0) 再 poll(dt)——直接 poll(2.0) 会把 2.0 当锚点。
+
+### Verification
+- `npm test` 107 绿；`npm run check` OK（rec/record、rec/play 进导入
+  smoke）。
+- **用户端到端确认**：录制 mock/simulate 演出 → .jsonl 下载 →
+  `?driver=playback` 文件选择器回放 → 同样的演出循环重演，监测条模式
+  与录制一致。Stage 6 关闭。
+
+### Next
+- Stage 7：演出硬化（固定 60fps 路径、延迟检查、多屏、全离线彩排清单）。
+
 ## 2026-10-26 — Stage 5: MIDI driver (+ simulator, no hardware needed)
 
 ### What

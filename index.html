@@ -31,6 +31,13 @@
       border-radius: 6px; font: inherit; font-size: 0.75rem; cursor: pointer;
     }
     .toggle.on { color: #e8e6e3; border-color: #5b8dd9; }
+    .toggle.recording { color: #e0705f; border-color: #e0705f; }
+    .btnrow { display: flex; gap: 0.4rem; }
+    #help {
+      margin: 0.5rem 0 0; padding: 0.5rem; max-width: 440px;
+      background: rgba(11, 11, 16, 0.85); border: 1px solid #2c2c36;
+      border-radius: 6px; font-size: 0.7rem; line-height: 1.6; color: #8a8782;
+    }
     #monitor {
       position: fixed; left: 1rem; bottom: 1rem; z-index: 10;
       width: 300px; background: rgba(11, 11, 16, 0.7); border-radius: 8px;
@@ -49,7 +56,22 @@
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
     <p id="status">loading…</p>
-    <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>
+    <div class="btnrow">
+      <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>
+      <button id="rec-toggle" class="toggle" type="button">rec: off</button>
+      <button id="help-toggle" class="toggle" type="button">?</button>
+    </div>
+    <pre id="help" hidden>URL params:
+  ?driver=mock|web-audio|osc|midi|playback
+  &amp;kind=pulse|ramp|silence   (mock)
+  &amp;source=mic|file            (web-audio)
+  &amp;simulate=1                 (midi — scripted performance)
+  &amp;osc=host:port              (osc — default localhost:9128)
+  &amp;rec=name.jsonl &amp;t0=5      (playback — file picker if no rec)
+  &amp;gain=low=1.5,onset=2      (response gains; 0 mutes a field)
+  &amp;beat=0                     (start with beat tracking off)
+Buttons: rec records the current visuals → .jsonl download;
+playback replays a recording through the same pipeline.</pre>
   </div>
   <div id="monitor"></div>
   <script>

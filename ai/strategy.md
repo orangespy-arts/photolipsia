@@ -45,7 +45,9 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 - [x] Stage 5 — midi driver: note→events+onset, CC table→continuums,
       clock→beatPhase (real beat source); + simulate=1 scripted
       performance (no hardware needed); +6 sim/full-chain tests (94 total)
-- [ ] Stage 6 — param recorder/playback (.jsonl), session UI polish
+- [x] Stage 6 — param recorder/playback (.jsonl ring buffer → exact-frame
+      binary-search playback driver, loop/t0), HUD rec button + ? help;
+      E2E round trip verified by user
 - [ ] Stage 7 — performance hardening: fixed 60fps path, latency check,
       multi-screen, full-offline rehearsal checklist
 - [ ] Track 2 — minimal Unity project: URP + UnityGaussianSplatting +
@@ -69,7 +71,46 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 6: param recorder/playback (.jsonl), session UI polish
+- Stage 7: performance hardening (fixed 60fps path, latency check,
+  multi-screen, full-offline rehearsal checklist)
+
+## Stage 6 plan — recorder/playback + session UI (drafted 2026-10-26, GO received)
+
+Goal: record any driver's AVParams frame stream to `.jsonl`, play it back
+later through the normal pipeline (`?driver=playback`). Use cases: show
+fallback (record a good take, replay it when the live source dies),
+offline visual tuning against a real performance, regression material
+for the mapping layer.
+
+- [x] 6a. **Pure recorder** (`src/rec/record.js`): createRecorder ring
+      buffer (default 18000 frames = 60Hz×5min), add/length/dropped/
+      toJSONL; recordingName() sortable filenames. Format = the protocol
+      frame itself, one JSON object per line.
+- [x] 6b. **Pure playback reader** (`src/rec/play.js`): parseRecording —
+      garbage lines (JSON errors AND sanitize errors) dropped whole and
+      counted (stricter than clamping: a recording that fails validation
+      is suspect); time-ascending sort defensively; frameAt binary
+      search, exact-frame semantics (last frame with time ≤ t; before
+      start → null). No smoothing added — recorded frames are already
+      driver-smoothed (iron rule 1 across the round trip).
+- [x] 6c. **Playback driver** (`src/drivers/playback.js`): wall clock →
+      recording time anchored at first poll, `?t0=` offset, loop by
+      default (wrap), no-loop clamps+holds. Frames re-emitted verbatim,
+      source-tagged 'playback', never mutated.
+- [x] 6d. **Record wiring**: HUD `rec: off/●/time` toggle records
+      post-gain (render-visible) frames; stop → Blob download with
+      recordingName filename; status shows saved count.
+- [x] 6e. **Verify**: `npm test` 107 green (+8 rec, +5 playback driver);
+      round-trip, ring buffer, garbage tolerance, loop/offset semantics,
+      untrusted-file gate all tested. **Remaining: user E2E** — record
+      ~30s, download, `?driver=playback` + file picker (or drop the file
+      in `public/rec/` + `?rec=name`), watch the same performance replay.
+- [x] 6f. **Session UI polish**: HUD button row (beat / rec / ?), `?`
+      help panel listing every URL param.
+
+Non-goals: no compression (jsonl of 60Hz frames ≈ 20MB/h — fine for
+5-min performance capture; revisit if sessions get long), no server-side
+storage, no audio recording (visual params only).
 
 ## Stage 5 plan — MIDI driver (drafted 2026-10-26, GO received)
 

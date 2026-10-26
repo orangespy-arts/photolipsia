@@ -42,6 +42,8 @@ const imp = spawnSync(
       './src/drivers/osc/oscDecode.js',
       './src/drivers/osc/oscMap.js',
       './src/drivers/midi/midiCore.js',
+      './src/rec/record.js',
+      './src/rec/play.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');
