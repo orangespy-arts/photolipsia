@@ -39,6 +39,8 @@ const imp = spawnSync(
       './src/drivers/webaudio/dsp.js',
       './src/drivers/webaudio/env.js',
       './src/drivers/webaudio/autogain.js',
+      './src/drivers/osc/oscDecode.js',
+      './src/drivers/osc/oscMap.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');

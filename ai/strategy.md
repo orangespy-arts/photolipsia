@@ -40,7 +40,8 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
       landed with unit tests; gain=0 mutes a field.
 - [x] Stage 3 — web-audio driver (mic + file), auto-gain normalization,
       onset-grid beat estimation with HUD toggle (3a–3g complete)
-- [ ] Stage 4 — osc driver + dumb UDP↔WebSocket bridge script (Node)
+- [x] Stage 4 — osc driver + dumb UDP↔WebSocket bridge (Node); E2E
+      verified by user (test-sender → bridge → browser, monitor bars live)
 - [ ] Stage 5 — midi driver (note→onset events, CC→continuums, clock→beatPhase)
 - [ ] Stage 6 — param recorder/playback (.jsonl), session UI polish
 - [ ] Stage 7 — performance hardening: fixed 60fps path, latency check,
@@ -66,7 +67,45 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 4: osc driver + dumb UDP↔WebSocket bridge script (Node)
+- Stage 5: midi driver (note→onset events, CC→continuums, clock→beatPhase)
+
+## Stage 4 plan — OSC driver + dumb bridge (drafted 2026-10-26, GO received)
+
+Goal: Max/SC/PD sends OSC over UDP → Node bridge relays raw packets over
+WebSocket → browser osc driver decodes and assembles AVParams. The bridge
+stays dumb (forwards bytes, understands nothing) per protocol doc; OSC
+decoding lives in the browser driver, as pure testable modules.
+
+- [x] 4a. **Minimal OSC decoder** (`src/drivers/osc/oscDecode.js`, pure,
+      zero-dep): typetags `i f s b`, strict 4-byte alignment, bundles
+      (#bundle, timetag skipped — immediate processing), nested bundles
+      flatten. Malformed input throws OscError (drop packet, never crash
+      the loop). 13 tests incl. hand-built byte packets.
+- [x] 4b. **Address→AVParams mapping** (`src/drivers/osc/oscMap.js`, pure):
+      OscFrameAssembler — feed(msg) accumulates, takeFrame(now) returns a
+      sanitized frame and resets (stale values never leak across frames;
+      absent fields fall back to 0). Unknown addresses ignored. 6 tests.
+- [x] 4c. **Bridge** (`scripts/osc-bridge.mjs`, Node, zero-dep): dgram UDP
+      + hand-rolled minimal RFC6455 WS server (handshake, binary frames
+      out, ping/pong, client frames read+discarded). Every UDP packet
+      broadcast verbatim. `--udp/--ws` flags (default 9129/9128).
+- [x] 4d. **Browser driver** (`src/drivers/osc/index.js`): WS client with
+      exponential-backoff reconnect (0.5→8s). Link-death guard: no packets
+      for 0.5s → all fields release-decay toward 0, centroid to neutral
+      (a dropped link must not freeze visuals in a stuck pose). OscError
+      packets dropped silently, real errors surface.
+- [x] 4e. **Wire-up**: `?driver=osc&osc=localhost:9128` lazy-imported in
+      main.js. Test sender `scripts/osc-test-sender.mjs` (8s scripted loop
+      at 60Hz: ramp + centroid sweep + 120bpm kick). Smoke test
+      `scripts/smoke-osc-bridge.mjs` (spawn bridge → UDP packet in →
+      assert verbatim WS out → exit) — **passed**.
+- [x] 4f. **Verify**: `npm test` 73 green (+19 OSC), `npm run check` OK
+      (oscDecode/oscMap in import smoke). **Remaining: user end-to-end** —
+      run bridge + test-sender + browser, monitor bars must move; then
+      optionally with real Max/SC.
+
+Non-goals: no bidirectional OSC (visual→DSP) yet; no timetag scheduling;
+no TCP OSC.
 
 ## Stage 3 plan — web-audio driver (drafted 2026-10-26, GO received)
 

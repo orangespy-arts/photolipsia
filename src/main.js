@@ -39,6 +39,11 @@ async function buildDriver(id) {
     }
     return createWebAudioDriver({ source, file });
   }
+  if (id === 'osc') {
+    const { createOscDriver } = await import('./drivers/osc/index.js');
+    const osc = url.get('osc') ?? 'localhost:9128';
+    return createOscDriver({ url: `ws://${osc}` });
+  }
   return registry.get(id);
 }
 

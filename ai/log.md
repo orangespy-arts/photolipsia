@@ -2,6 +2,59 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 4: OSC driver + dumb UDP↔WebSocket bridge
+
+### What
+- **4a OSC 解码器**（`src/drivers/osc/oscDecode.js`，纯、零依赖、Node 可测）：
+  typetags i/f/s/b、严格 4 字节对齐、#bundle（timetag 解析但忽略——立即
+  处理不做调度）、嵌套 bundle 展平。坏包抛 `OscError`（调用方丢包，绝不
+  崩渲染循环），13 个测试全部用手工字节包。
+- **4b 地址映射**（`oscMap.js`，纯）：协议文档的 OSC 地址表直接变成代码。
+  `OscFrameAssembler`：feed(msg) 累积一个 60Hz 周期，takeFrame(now) 过
+  sanitizeParams 并原地重置——陈旧值不漏到下一帧，缺席字段归 0（静音，
+  不是卡住的旧值）。未知地址忽略（向前兼容）。6 测试。
+- **4c 哑桥**（`scripts/osc-bridge.mjs`，Node 零依赖）：dgram UDP :9129 →
+  手写最小 RFC6455 WebSocket :9128（握手 + 二进制帧 + ping/pong；浏览器
+  上行帧读入即弃——桥是单方向的）。每个 UDP 包原样广播给所有 WS 客户端，
+  不理解内容。`--udp/--ws` 参数。
+- **4d 浏览器驱动**（`drivers/osc/index.js`）：WS 客户端 + 指数退避重连
+  （0.5→8s）。**断链保护**：0.5s 无包 → 全字段按 τ=0.3s 释放衰减归 0、
+  centroid 回中性 0.5——掉链子不能让视觉卡死在一个姿势。OscError 静默
+  丢包，真错误照常上抛。
+- **4e 接线**：`?driver=osc&osc=localhost:9128`（懒加载，同 web-audio 模式）。
+  附 `scripts/osc-test-sender.mjs`（60Hz 脚本信号：8s 循环 ramp + 质心扫频
+  + 120bpm kick）和 `scripts/smoke-osc-bridge.mjs`（一次性冒烟：起桥 →
+  UDP 发包 → 断言 WS 原样收到 → 退出，非长期进程）。
+- 责任划分与 web-audio 驱动相反：**平滑/归一化在 DSP 端**（Max/SC）——
+  桥和浏览器驱动都不做平滑，协议铁律 1 由发送方履行。
+
+### 调试记录（OSC 字节层的坑）
+- **OSC 字符串 pad 公式**：NUL 终止后补齐到 4 的倍数，且**至少 1 个 NUL**
+  ——pad = `4 - len%4`（不带外层 %4）。第一版 `(4-len%4)%4` 让 12 字符
+  地址（恰好对齐）发了 0 个 NUL，解码器把 `,f` 的 `,` 读进了地址。真实
+  OSC 发送方永远至少 1 个 NUL——是测试 helper 错，不是解码器错。
+- `Array.prototype.flat` **不展平 TypedArray**；`Uint8Array.of(...[u8obj])`
+  把一个 Uint8Array 对象折成一个 NaN→0 元素。测试 helper 改为先 map 成
+  普通数组再 flat。
+- OSC f32 精度：60 编码成 f32 解码回 60.0000009——测试断言全部改近似
+  比较，deepStrictEqual 只用于地址/字符串。
+- blob 长度字段声明内容长度，对齐 pad 不属于内容（解码 slice 到声明长
+  度是正确行为，测试期望写错过）。
+- readStringAt 第一版从 offset 0 搜 NUL、第二版覆盖偏移而非累加——字节
+  层解析器每一处偏移推进都要对着字节转储验证。
+
+### Verification
+- `npm test` 73 绿（+19 OSC：13 解码 + 6 映射）。
+- `npm run check` OK（oscDecode/oscMap 进导入 smoke）。
+- `node scripts/smoke-osc-bridge.mjs` OK（UDP 包原样出现在 WS）。
+- **用户端到端确认**（截图 `ai/stage4.png`）：test-sender 60Hz → 桥
+  （udp 224B → 1 ws client 日志）→ 浏览器 `?driver=osc`：八条监测条全部
+  活动，beatPhase 由 sender 的 120bpm kick 驱动，splat 随信号变形变色。
+  Stage 4 关闭。
+
+### Next
+- Stage 5：MIDI 驱动（note→onset 事件、CC→连续量、clock→beatPhase）。
+
 ## 2026-10-26 — Stage 3: web-audio driver (mic/file), autogain, beat estimation
 
 ### What
