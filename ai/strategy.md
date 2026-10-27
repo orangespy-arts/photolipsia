@@ -316,3 +316,38 @@ rooms both produce full-range visuals.
       driver.setBeatEnabled(); `?beat=0` starts off. 8 new tests.
 
 Non-goals: no OSC/MIDI yet, no recording, no fancy latency tuning (Stage 7).
+
+## 2026-10-27 附记 — 自定义 splat 场景接入（用户扫描件）
+
+- 用户新扫描的视频 3DGS 训练件（951,554 splats，226MB，标准 62 属性
+  二进制 PLY）已接入：拷到 `public/splats/scan.ply`（**本地文件，不进
+  git**——AGENTS.md 禁大二进制）。
+- 新参数：`?view=look@cam`（自定义场景相机基准，如
+  `?view=0.26,1.3,-0.2@0.26,1.5,5`）、`?spin=0`（关掉 idle 自转——
+  扫描件不该被转）。默认 test.ply 路径不受影响。
+- 取景教训：扫描场景本体在 y≈1.13–1.56（ ply 顶点百分位实测），
+  默认相机 (0,0.4,4.5) 看原点 → 场景缩在左上角。`?view` 用实测
+  中心 (0.26,1.3,-0.2) 对准即可。相机距离 1.8 会钻进场景过曝，
+  5 左右框住全场景。
+- `npm test` 107 绿。Unity 工程已由用户建在
+  `photolipsia-unity/`（6000.3.9f1）——**位置待定**（在 Web 仓库
+  里面还是移出去），定下来后继续 Track 2 步 2.0。
+
+## 2026-10-27 附记 2 — 交互取景 + ?tf= 模型变换（交互式取景完成）
+
+- 用户要求"像 3D 软件一样调整模型位置和大小"。落地三层：
+  1. **鼠标取景**：左键拖 = orbit、右键/Shift 拖 = pan、滚轮 = dolly。
+     手写 ~80 行（不引 OrbitControls，零依赖惯例保持）。仅在 ?spin=0
+     时激活——idle 自转和拖拽会打架。
+  2. **?tf=x,y,z@rx,ry,rz@s**：splat 本体变换（位置@欧拉角(度)@均匀
+     缩放），缺省段回静息态。呼吸缩放改为**乘以** tf 基准缩放而非覆盖。
+  3. **copy framing 按钮**：把当前相机（?view）+ 变换（?tf）+ spin=0
+     序列化回 URL 复制——调好的取景是可分享的 URL，不靠截图抄数字。
+- 纯解析层 `src/render/framing.js` + 13 个单测（parseVec3 严格三有限数、
+  空段拒绝、fmtTf 静息态输出空串省参数）。
+- E2E：合成 CDP pointer 事件验证 orbit/pan/wheel 都动相机、复制链接
+  重载后取景精确复原。全程 headless。
+- 调试教训：`[...threeEuler]` 不可迭代（Euler 无迭代器），序列化要用
+  `.x/.y/.z`；`__DIAG__` 原是加载时快照，probe 读不到拖拽后的相机——
+  改为 live getter。
+- `npm test` 120 绿（+13 framing）。
