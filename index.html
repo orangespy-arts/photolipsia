@@ -77,10 +77,15 @@
   &view=look@cam &spin=0  (camera aim for custom scenes; 0 = no idle spin)
   &mode=shake             (colors+scale stay native; only jitter)
   &play=1                (explorer: ball rolls on arrow keys/WASD, greens the ground)
+  &ground=-0.23 &spawn=0,-0.23,0 (world-space floor and spawn; ground overrides spawn y)
+  &follow=0,1.6,3.2      (camera offset from ball, world-space)
+  &seeds=/splats/green-seeds.ply (seed positions must match the final world-space scene)
   &tf=x,y,z@rx,ry,rz@s    (splat transform: position @ euler-degrees @ scale)
 Drag: orbit (left) / pan (right or Shift) / wheel = zoom — needs ?spin=0.
 "copy framing" puts the current camera+tf into the URL for sharing.
 Buttons: the driver row switches drivers (one per click, page reloads);
+Explorer defaults to ruin1.ply; movement waits for scene and seeds to load.
+tf places the source scene; it does not transform the world-space floor/seeds.
 rec records the current visuals → .jsonl download;
 playback replays a recording through the same pipeline.</pre>
   </div>

@@ -44,6 +44,9 @@ const imp = spawnSync(
       './src/drivers/midi/midiCore.js',
       './src/rec/record.js',
       './src/rec/play.js',
+      './src/render/explorerMotion.js',
+      './src/render/explorerInput.js',
+      './src/render/sceneConfig.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');

@@ -8,6 +8,7 @@ import { createExplorer } from './render/explorer.js';
 import { fmtVec3, fmtTf } from './render/framing.js';
 import { createMonitor } from './ui/monitor.js';
 import * as THREE from 'three';
+import { sceneConfig } from './render/sceneConfig.js';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -234,19 +235,13 @@ document.getElementById('frame-copy').addEventListener('click', () => {
 // ?play=1 — explorer mode: a third-person ball rolls through the scene on
 // arrow keys (WASD too) and greens the ground it passes. The camera follows
 // the ball, so idle spin, drag-orbit and copy-framing are disabled there.
-const parseVec3 = (s) => s.split(',').map(Number).filter((v) => Number.isFinite(v));
-const play = url.get('play') === '1';
-let view;
-if (url.get('view')) {
-  const [look, cam] = url.get('view').split('@');
-  if (look && parseVec3(look).length === 3) view = { lookAt: parseVec3(look) };
-  if (cam && parseVec3(cam).length === 3) view = { ...view, camPos: parseVec3(cam) };
-}
+const config = sceneConfig(url);
+const { play, view } = config;
 const stage = createSplatStage({
   canvas,
-  splatUrl: url.get('splat') ?? '/splats/test.ply',
+  splatUrl: config.splatUrl,
   view,
-  tf: url.get('tf') ?? undefined,
+  tf: config.tf,
   spin: url.get('spin') === '0' || play ? 0 : undefined,
   // ?mode=shake — colors and scales stay native; wobble jitter is the only
   // audio response (ruins scenes that must not recolor)
@@ -260,18 +255,21 @@ if (play) {
   explorer = createExplorer({
     scene: stage.scene,
     camera: stage.camera,
-    seedsUrl: '/splats/green-seeds.ply',
-    domElement: document.body,
+    config: config.explorer,
+    isStageReady: () => stage.ready,
   });
   document.getElementById('frame-copy').hidden = true;
-  setStatus('explorer: arrow keys / WASD move the ball');
+  setStatus('loading scene and greenery…');
 }
-stage.ready ? setStatus('splat loaded') : watchSplat();
+watchSplat();
 function watchSplat() {
   const check = setInterval(() => {
-    if (stage.ready) {
+    if (stage.loadError || explorer?.loadError) {
       clearInterval(check);
-      setStatus(`splat loaded (${driver?.id ?? 'no driver'})`);
+      setStatus(`load failed: ${stage.loadError ?? explorer.loadError}`, true);
+    } else if (stage.ready && (!explorer || explorer.seedsReady)) {
+      clearInterval(check);
+      setStatus(explorer ? 'explorer ready: arrow keys / WASD move' : `splat loaded (${driver?.id ?? 'no driver'})`);
       // live getter, not a snapshot — probes read camera state after drags
       window.__DIAG__ = null;
       Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });
