@@ -2,6 +2,60 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-27 — 交互取景（orbit/pan/zoom + ?tf= + copy framing）；Unity 轨道搁置，历史清除
+
+### What
+- **交互取景**（用户需求："像 3D 软件一样调整模型位置和大小"）：
+  - 纯解析层 `src/render/framing.js`：`?view=look@cam`、
+    `?tf=x,y,z@rx,ry,rz@s`（位置@欧拉角@均匀缩放，缺省段回静息态）+
+    fmtTf 序列化（静息态输出空串省参数）。13 个单测。
+  - stage.js 手写 orbit 控制器（~80 行，不引 OrbitControls）：左键
+    orbit、右键/Shift pan、滚轮 dolly；仅在 ?spin=0 时激活（idle 自转
+    会和拖拽打架）。呼吸缩放改为**乘以** tf 基准缩放而非覆盖。
+  - HUD **copy framing** 按钮：当前相机 + splat 变换 + spin=0 序列化回
+    URL 复制——调好的取景是可分享的 URL，不靠截图抄数字。
+  - E2E：合成 CDP pointer 事件（.check/verify-framing.mjs）验证
+    orbit/pan/wheel 都动相机、复制链接重载精确复原取景。全 PASS。
+- **扫描场景接入**（`public/splats/scan.ply`，本地不进 git）：用户的
+  AI 视频训练件，951,554 splats、226MB、62 属性标准 3DGS PLY，Spark
+  直接吃。取景定位用顶点百分位实测（p2/p50/p98）而非猜。相机距离
+  1.8 会钻进场景过曝，5 左右框住全场景。
+- **Unity 轨道搁置 + 历史清除**（用户决定）：
+  - 背景：用户提出多场景"跑图"演出方向（废墟 → 人经过复绿 → 时空洞
+    转场 → 下一场景，声音驱动抖动/复绿速度），素材走 AI 生成下载。
+    机制先在 Web 端跑通，Unity 需求等机制定了再评估。
+  - 操作：`photolipsia-unity/`（URP 空模板工程，无自定义代码）从磁盘
+    删除；`git filter-repo --path photolipsia-unity --invert-paths` 把
+    误入库的 64 个模板文件（7607 行，commit 195bf27）从全部历史清除；
+    force push 重写后的历史。改写前 `git bundle` 全量备份到
+    `../photolipsia-backup-before-rewrite.bundle`。
+  - Track 2 计划在 strategy.md 标记 SHELVED（协议文档与
+    docs/unity-setup-guide.md 保留，重建有路可循）。
+
+### 调试记录
+- `[...threeEuler]` 不可迭代（Euler 无迭代器）——序列化要用 `.x/.y/.z`。
+  症状有迷惑性：copy 出的 URL 带 `tf=0,0,0@0,0,0`（应为空），实为展开
+  产生的脏值。
+- `__DIAG__` 原是加载时快照（watchSplat 里赋值一次），probe 拖拽后
+  读到的相机位置不变——改为 defineProperty live getter 后 E2E 才
+  能读到真实状态。probe 型验证要假设"读的是活的"。
+- `parseVec3('1,,3')`：空段经 `Number('')` 变 0 而非 NaN，静默错值——
+  解析器对空段显式拒绝。
+- pip 安装在本机超时风险高（Windows Defender 扫描），用 run_in_background
+  或直接 `python -m pip --user`。
+
+### Verification
+- `npm test` 120 绿（+13 framing）；`npm run check` OK。
+- E2E 见上；?tf= 变换 probe 截图验证（1.3× + 30° 旋转结构角度明显变化，
+  splatScale 精确 1.334）。
+- git：重写后 `git log --all -- photolipsia-unity` 为空、.git 1.4MB、
+  force push 成功。
+
+### Open questions
+- 跑图方向的场景清单格式、废墟滤镜参数集、复绿触发机制——等第一批
+  AI 生成素材到手后规划（素材是下载的，入库清理/归一化是新环节）。
+- 7e 用户验证仍暂缓。
+
 ## 2026-10-26 — Stage 7 (7a–7d): 演出硬化 + 驾驶员切换 UI + strategy 恢复
 
 ### What

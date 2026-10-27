@@ -74,11 +74,11 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 - **7e（暂缓待办）**：用户本机跑 `docs/rehearsal.md` 彩排清单——离线
   验证（断网全流程）、双屏物理验证、故障切换演练。条件允许时再做，
   做完写 Stage 7 log 收尾。
-- Track 2 — minimal Unity project: URP + UnityGaussianSplatting + OSC
-  listener (Room of Sounds OSC.cs), `/av/band/low` → splat scene
-  breathing; protocol doc copied over as source of truth
+- ~~Track 2 — Unity project~~ **搁置（2026-10-27）**：演出方向改为
+  多场景跑图（见 2026-10-27 附记 3），机制先在 Web 端跑通，Unity 需求
+  等机制定了再评估。协议文档不变；重建路径见 docs/unity-setup-guide.md。
 
-## Track 2 plan — minimal Unity project (drafted 2026-10-26, **waiting for "go"**)
+## Track 2 plan — minimal Unity project (drafted 2026-10-26, **SHELVED 2026-10-27**)
 
 Goal: the performance destination gets a pulse. A minimal Unity project
 (URP) hosting UnityGaussianSplatting, receiving OSC from a UDP listener,
