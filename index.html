@@ -60,6 +60,7 @@
     <div class="btnrow">
       <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>
       <button id="rec-toggle" class="toggle" type="button">rec: off</button>
+      <button id="frame-copy" class="toggle" type="button">copy framing</button>
       <button id="help-toggle" class="toggle" type="button">?</button>
     </div>
     <div class="btnrow" id="driver-row" style="margin-top:0.4rem"></div>
@@ -74,6 +75,9 @@
   &amp;beat=0                     (start with beat tracking off)
   &amp;splat=/splats/x.ply        (your own splat scene; .ply/.splat in public/)
   &view=look@cam &spin=0  (camera aim for custom scenes; 0 = no idle spin)
+  &tf=x,y,z@rx,ry,rz@s    (splat transform: position @ euler-degrees @ scale)
+Drag: orbit (left) / pan (right or Shift) / wheel = zoom — needs ?spin=0.
+"copy framing" puts the current camera+tf into the URL for sharing.
 Buttons: the driver row switches drivers (one per click, page reloads);
 rec records the current visuals → .jsonl download;
 playback replays a recording through the same pipeline.</pre>

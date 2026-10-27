@@ -4,7 +4,9 @@ import { createMockDriver } from './drivers/mock.js';
 import { parseGains, applyGains } from './mapping/gains.js';
 import { createRecorder, recordingName } from './rec/record.js';
 import { createSplatStage } from './render/stage.js';
+import { fmtVec3, fmtTf } from './render/framing.js';
 import { createMonitor } from './ui/monitor.js';
+import * as THREE from 'three';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -199,6 +201,29 @@ document.getElementById('help-toggle').addEventListener('click', () => {
   h.hidden = !h.hidden;
 });
 
+// copy framing link: current camera (?view) + splat transform (?tf) back
+// into the URL — a framed shot is a shareable URL, not a screenshot
+document.getElementById('frame-copy').addEventListener('click', () => {
+  const cam = stage.liveCameraState();
+  const next = new URLSearchParams(location.search);
+  next.set('view', `${fmtVec3(cam.lookAt)}@${fmtVec3(cam.camPos)}`);
+  next.set('spin', '0');
+  const tf = fmtTf({
+    position: [...stage.splat.position.toArray()],
+    rotationDeg: [
+      stage.splat.rotation.x,
+      stage.splat.rotation.y,
+      stage.splat.rotation.z,
+    ].map(THREE.MathUtils.radToDeg),
+    scale: stage.splat.scale.x,
+  });
+  if (tf) next.set('tf', tf); else next.delete('tf');
+  const link = `${location.origin}${location.pathname}?${next}`;
+  navigator.clipboard.writeText(link)
+    .then(() => setStatus('framing link copied'))
+    .catch(() => setStatus('clipboard blocked — see console', true) ?? console.log(link));
+});
+
 // ── splat stage ──
 // ?splat=/splats/your.ply — bring your own scene; any .ply (3DGS) or .splat
 // file under public/ works. The y-down→y-up flip and dyno modifier apply to
@@ -216,6 +241,7 @@ const stage = createSplatStage({
   canvas,
   splatUrl: url.get('splat') ?? '/splats/test.ply',
   view,
+  tf: url.get('tf') ?? undefined,
   spin: url.get('spin') === '0' ? 0 : undefined,
 });
 stage.ready ? setStatus('splat loaded') : watchSplat();
@@ -224,7 +250,9 @@ function watchSplat() {
     if (stage.ready) {
       clearInterval(check);
       setStatus(`splat loaded (${driver?.id ?? 'no driver'})`);
-      window.__DIAG__ = stage.diag;
+      // live getter, not a snapshot — probes read camera state after drags
+      window.__DIAG__ = null;
+      Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });
     } else if (stage.loadError) { clearInterval(check); setStatus(`splat failed: ${stage.loadError}`, true); }
   }, 100);
 }
