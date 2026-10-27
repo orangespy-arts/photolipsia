@@ -203,9 +203,20 @@ document.getElementById('help-toggle').addEventListener('click', () => {
 // ?splat=/splats/your.ply — bring your own scene; any .ply (3DGS) or .splat
 // file under public/ works. The y-down→y-up flip and dyno modifier apply to
 // whatever loads here.
+// ?view=look@cam — optional camera basis for non-default scenes, e.g.
+// ?view=0,1.4,-0.3@0,1.4,2 aiming at a scene centered at (0,1.4,-0.3).
+const parseVec3 = (s) => s.split(',').map(Number).filter((v) => Number.isFinite(v));
+let view;
+if (url.get('view')) {
+  const [look, cam] = url.get('view').split('@');
+  if (look && parseVec3(look).length === 3) view = { lookAt: parseVec3(look) };
+  if (cam && parseVec3(cam).length === 3) view = { ...view, camPos: parseVec3(cam) };
+}
 const stage = createSplatStage({
   canvas,
   splatUrl: url.get('splat') ?? '/splats/test.ply',
+  view,
+  spin: url.get('spin') === '0' ? 0 : undefined,
 });
 stage.ready ? setStatus('splat loaded') : watchSplat();
 function watchSplat() {

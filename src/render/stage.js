@@ -9,7 +9,7 @@ import { createAvModifier } from './avModifier.js';
  * The AVParams → visual math lives in mapping (pure, tested); this file is
  * the only place that touches three.js/Spark.
  */
-export function createSplatStage({ canvas, splatUrl }) {
+export function createSplatStage({ canvas, splatUrl, view, spin }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
@@ -21,6 +21,13 @@ export function createSplatStage({ canvas, splatUrl }) {
   );
   camera.position.set(0, 0.4, 4.5);
   camera.lookAt(0, 0, 0);
+
+  // ?view= gives a splat-specific basis: look-at point, then camera
+  // position (each 3 numbers). Scenes other than the test splat have
+  // their own scale and center; this aims the camera without touching
+  // the default path.
+  if (view?.camPos) camera.position.set(...view.camPos);
+  if (view?.lookAt) camera.lookAt(...view.lookAt);
 
   const splat = new SplatMesh({ url: splatUrl });
   splat.quaternion.array = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // y-down → y-up
@@ -90,7 +97,7 @@ export function createSplatStage({ canvas, splatUrl }) {
 
   function render(timeSeconds) {
     resize();
-    splat.rotation.y = timeSeconds * 0.15; // slow idle spin for life
+    if (spin !== 0) splat.rotation.y = timeSeconds * 0.15; // slow idle spin; ?spin=0 stills it
     renderer.render(scene, camera);
   }
 
