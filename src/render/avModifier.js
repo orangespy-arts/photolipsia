@@ -14,7 +14,7 @@ import { dyno } from '@sparkjsdev/spark';
 // numeric literal → dyno value (dyno.float() etc. cast DynoVals, not numbers)
 const f = (n) => dyno.dynoConst('float', n);
 
-export function createAvModifier() {
+export function createAvModifier({ shake = false } = {}) {
   // ── audio uniforms (JS updates .value per frame) ──
   const uLow = dyno.dynoFloat(0, 'avLow');
   const uMid = dyno.dynoFloat(0, 'avMid');
@@ -47,17 +47,26 @@ export function createAvModifier() {
         dyno.mul(tri(0.85), uHigh));
 
       // ── scale pulse: band energy breathe + onset punch ──
-      const pulse = dyno.add(
-        dyno.mul(bandEnergy, f(0.35)),
-        dyno.mul(uOnset, f(0.5)));
-      const newScales = dyno.mul(scales, dyno.add(f(1), pulse));
+      // shake mode: scales stay native — the only audio response is jitter.
+      let newScales = scales;
+      if (!shake) {
+        const pulse = dyno.add(
+          dyno.mul(bandEnergy, f(0.35)),
+          dyno.mul(uOnset, f(0.5)));
+        newScales = dyno.mul(scales, dyno.add(f(1), pulse));
+      }
 
       // ── displacement: audio-driven wobble (cheap trig noise) ──
       // Components stay scalar and are merged via combineGsplat's center
       // path — scalar vec3 constructors are a proven-bad dyno path (log).
+      // In shake mode this is the ONLY response: onset joins the jitter
+      // amplitude (a hit = a hard shake) instead of its own scale punch.
+      const wobbleGain = shake
+        ? dyno.add(f(0.6), dyno.mul(f(2), dyno.max(uOnset, bandEnergy)))
+        : dyno.add(f(0.4), bandEnergy);
       const wob1 = dyno.sin(dyno.add(dyno.mul(cx, f(3)), dyno.mul(uTime, f(1.7))));
       const wob2 = dyno.sin(dyno.add(dyno.mul(cz, f(3)), dyno.mul(uTime, f(1.3))));
-      const driftAmt = dyno.mul(f(0.08), dyno.add(f(0.4), bandEnergy));
+      const driftAmt = dyno.mul(f(0.08), wobbleGain);
       const newCenter = dyno.combine({
         vectorType: 'vec3',
         x: dyno.add(dyno.swizzle(center, 'x'), dyno.mul(wob1, driftAmt)),
@@ -66,19 +75,31 @@ export function createAvModifier() {
       });
 
       // ── color: centroid → hue rotation, band energy → brightness ──
-      const hueAngle = dyno.mul(dyno.sub(uCentroid, f(0.5)), f(3.14159));
-      const bright = dyno.add(f(1), dyno.mul(bandEnergy, f(0.6)));
-      // hueRotate returns the three rotated channels as scalars; they go
-      // straight into the vec4 combine (dyno.vec3(s,s,s) turned out to be
-      // an unreliable constructor — colors went grayscale through it).
-      const { rp, gp, bp } = hueRotateChannels(dyno.mul(rgb, bright), hueAngle);
-      const newRgba = dyno.combine({
-        vectorType: 'vec4',
-        x: rp,
-        y: gp,
-        z: bp,
-        w: opacity,
-      });
+      // shake mode: rgb passes through untouched — native file colors.
+      let newRgba;
+      if (shake) {
+        newRgba = dyno.combine({
+          vectorType: 'vec4',
+          x: dyno.swizzle(rgb, 'x'),
+          y: dyno.swizzle(rgb, 'y'),
+          z: dyno.swizzle(rgb, 'z'),
+          w: opacity,
+        });
+      } else {
+        const hueAngle = dyno.mul(dyno.sub(uCentroid, f(0.5)), f(3.14159));
+        const bright = dyno.add(f(1), dyno.mul(bandEnergy, f(0.6)));
+        // hueRotate returns the three rotated channels as scalars; they go
+        // straight into the vec4 combine (dyno.vec3(s,s,s) turned out to be
+        // an unreliable constructor — colors went grayscale through it).
+        const { rp, gp, bp } = hueRotateChannels(dyno.mul(rgb, bright), hueAngle);
+        newRgba = dyno.combine({
+          vectorType: 'vec4',
+          x: rp,
+          y: gp,
+          z: bp,
+          w: opacity,
+        });
+      }
 
       return { gsplat: dyno.combineGsplat({
         gsplat,

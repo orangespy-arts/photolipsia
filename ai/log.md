@@ -2,6 +2,110 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-27 — 第三人称跑图球 + 复绿（附记 4，`?play=1`）
+
+### What
+- 用户请求："第三人称的球，可以跑图的，球经过的地方长出绿叶，通过
+  上下左右键移动"。第一个可玩原型落地：
+  - **`src/mapping/greening.js`（纯函数，11 单测）**：createSeeds /
+    growSeeds / coverage。平面距离衰减（忽略 y），bloom 单向不可逆
+    （离开后保持），fully-grown 种子不再消耗工作；bandLow 扩大半径
+    （0.8 → ×(1+0.6·bandLow)），onset 加速生长（×(1+0.5·onset)）。
+  - **`scripts/make-green-seeds.mjs`**：从 ruin1.ply 流式采样地面顶点
+    （1m xz 网格 cell 最小 y → 25 分位 = 楼板高；p2..p98 聚类框两轮
+    过滤掉全景天空杂物形成的假地面），3000 颗叶片状小高斯写入
+    `public/splats/green-seeds.ply`（opacity 0，本地不进 git）。
+  - **`src/render/explorer.js`**：球网格（自发光，onset → emissive
+    脉冲）+ 方向键/WASD 在相机 yaw 平面移动（ACCEL/DAMP 阻尼）+ 滚动
+    自转 + 阻尼追相机；种子 SplatMesh 初始化后读 packedSplats 建表，
+    每帧只写 bloom>0 且 opacity 变化超阈值的 splat
+    （`setSplat` + `needsUpdate`）。
+  - **接线**：`?play=1` 启用；stage 新增 `interactive` 参数，play 模式
+    传 false 禁用拖拽 orbit/wheel（否则和追相机打架）；copy-framing
+    按钮隐藏；帮助面板加 `&play=1` 行。默认路径零改动。
+  - **`scripts/probe-explorer.mjs`（新）**：CDP
+    `Input.dispatchKeyEvent` 走真实键盘路径的 E2E 探针，读
+    `window.__EXPLORER__` live hook（main.js 挂的 pos/grown/coverage）。
+
+### Verification
+- `npm test` 131 绿（120 + 11 greening），`npm run check` OK。
+- probe-explorer E2E：按住 ↑ 3s → 球 (0,-0.23,0) → (0,-0.23,-5.02)，
+  追相机跟随（camPos z 3.20 → -1.42），grown 种子 106 → 446，
+  coverage 0.056；截图 .check/explorer-before/after.png。
+- 默认路径（?spin=0 无 play）probe：camPos 停在 (0,0.4,4.5)，行为不变。
+
+### Lessons（调试记录，防重蹈）
+- **3DGS PLY 行大小是 14 floats = 56 字节，不是 62**。make-test-splat.mjs
+  里"rowSize = 62"的注释本身就是错的（3+3+3+1+3+4=14 项 × 4B）。验证
+  脚本先怀疑数据、后才发现是验证器自己错了——**先验证验证器**。
+- **DataView 套 pooled Buffer 的坑**：`new DataView(buf.buffer,
+  buf.byteOffset)` 忘了 byteLength 时越界读会静默给出垃圾；验证小文件
+  直接用 `buf.readFloatLE(offset)` 最稳。
+- **全景扫描件的"假地面"**：天空杂物落在低 y 处会形成远处假地板 cell；
+  1m 网格 + 楼板分位数之后必须再做 p2..p98 聚类框过滤，否则种子撒到
+  空中。
+- probe.mjs 的 URL 是**位置参数**（argv[2]），不是 --url flag。
+
+### Open questions
+- 跑图手感（速度 6.5 加速度、相机 (0,1.6,3.2) 偏移）是拍的，等用户
+  试玩反馈再调。
+- 地面高度目前硬编码 ruin1 的 y≈-0.23；多场景时需要逐场景配置
+  （`?ground=` 或场景清单字段）。
+
+## 2026-10-27 — ?mode=shake：原生颜色 + 只抖动（附记 3）
+
+### What
+- 用户请求："所有互动方式都不改变，颜色保持原生的颜色，只抖动"。
+  交互层（拖拽取景、驱动切换、录制回放、全部 URL 参数）不动；新增
+  **`?mode=shake`** 收紧音频视觉响应：
+  - dyno 图（avModifier.js）：rgb 原样进 rgba（无亮度乘、无 hue 旋转）；
+    scales 原样（无 band 脉冲/onset punch）；唯一保留 center wobble，
+    且 onset 并入抖动幅度（`max(onset, bandEnergy)` 加权）——敲击=
+    猛抖一下而不是缩放 punch。
+  - stage.js：shake 模式下整体呼吸缩放关闭，object scale 恒为
+    tfScale（?tf= 基准缩放仍生效）。
+  - 默认路径（不带 mode=shake）一行行为不变。
+- 帮助面板补 `&mode=shake` 条目。
+
+### Verification
+- `npm test` 120 绿；`npm run check` OK。
+- probe A/B（同一 mock ramp 帧，ruin1.ply，t≈8.7s）：
+  - `?mode=shake`：水泥原生色，splatScale=1，只有位移抖动；
+  - 默认：满屏绿/品红（hue 放大文件色偏），splatScale 1.0299——旧行为原样。
+  - 截图 .check/shake-ramp.png / .check/default-ramp.png。
+- 明确边界：ruin1 文件内烤进的绿/品红色偏是 Marble 导出管线问题，
+  本改动不修文件颜色；修复路径是 Marble 侧重导或文件预处理。
+
+### Open questions
+- 跑图方向多场景机制规划仍等第一批素材到手。
+
+## 2026-10-27 — ?mode=shake：原生颜色 + 只抖动（附记 3）
+
+### What
+- 用户请求："所有互动方式都不改变，颜色保持原生的颜色，只抖动"。
+  交互层（拖拽取景、驱动切换、录制回放、全部 URL 参数）不动；新增
+  **`?mode=shake`** 收紧音频视觉响应：
+  - dyno 图（avModifier.js）：rgb 原样进 rgba（无亮度乘、无 hue 旋转）；
+    scales 原样（无 band 脉冲/onset punch）；唯一保留 center wobble，
+    且 onset 并入抖动幅度（`max(onset, bandEnergy)` 加权）——敲击=
+    猛抖一下而不是缩放 punch。
+  - stage.js：shake 模式下整体呼吸缩放关闭，object scale 恒为
+    tfScale（?tf= 基准缩放仍生效）。
+  - 默认路径（不带 mode=shake）一行行为不变。
+- 帮助面板补 `&mode=shake` 条目。
+
+### Verification
+- `npm test` 120 绿；`npm run check` OK。
+- probe A/B（同一 mock ramp 帧，ruin1.ply，t≈8.7s）：
+  - `?mode=shake`：水泥原生色，splatScale=1，只有位移抖动；
+  - 默认：满屏绿/品红（hue 放大文件色偏），splatScale 1.0299——旧行为原样。
+  - 截图 .check/shake-ramp.png / .check/default-ramp.png。
+- 明确边界：ruin1 文件内烤进的绿/品红色偏是 Marble 导出管线问题，
+  本改动不修文件颜色；修复路径是 Marble 侧重导或文件预处理。
+
+### Open questions
+- 跑图方向多场景机制规划仍等第一批素材到手。
+
 ## 2026-10-27 — 交互取景（orbit/pan/zoom + ?tf= + copy framing）；Unity 轨道搁置，历史清除
 
 ### What

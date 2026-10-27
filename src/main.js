@@ -4,6 +4,7 @@ import { createMockDriver } from './drivers/mock.js';
 import { parseGains, applyGains } from './mapping/gains.js';
 import { createRecorder, recordingName } from './rec/record.js';
 import { createSplatStage } from './render/stage.js';
+import { createExplorer } from './render/explorer.js';
 import { fmtVec3, fmtTf } from './render/framing.js';
 import { createMonitor } from './ui/monitor.js';
 import * as THREE from 'three';
@@ -230,7 +231,11 @@ document.getElementById('frame-copy').addEventListener('click', () => {
 // whatever loads here.
 // ?view=look@cam — optional camera basis for non-default scenes, e.g.
 // ?view=0,1.4,-0.3@0,1.4,2 aiming at a scene centered at (0,1.4,-0.3).
+// ?play=1 — explorer mode: a third-person ball rolls through the scene on
+// arrow keys (WASD too) and greens the ground it passes. The camera follows
+// the ball, so idle spin, drag-orbit and copy-framing are disabled there.
 const parseVec3 = (s) => s.split(',').map(Number).filter((v) => Number.isFinite(v));
+const play = url.get('play') === '1';
 let view;
 if (url.get('view')) {
   const [look, cam] = url.get('view').split('@');
@@ -242,8 +247,25 @@ const stage = createSplatStage({
   splatUrl: url.get('splat') ?? '/splats/test.ply',
   view,
   tf: url.get('tf') ?? undefined,
-  spin: url.get('spin') === '0' ? 0 : undefined,
+  spin: url.get('spin') === '0' || play ? 0 : undefined,
+  // ?mode=shake — colors and scales stay native; wobble jitter is the only
+  // audio response (ruins scenes that must not recolor)
+  shake: url.get('mode') === 'shake',
+  // play mode: the explorer owns the camera — orbit/wheel handlers would fight it
+  interactive: !play,
 });
+
+let explorer = null;
+if (play) {
+  explorer = createExplorer({
+    scene: stage.scene,
+    camera: stage.camera,
+    seedsUrl: '/splats/green-seeds.ply',
+    domElement: document.body,
+  });
+  document.getElementById('frame-copy').hidden = true;
+  setStatus('explorer: arrow keys / WASD move the ball');
+}
 stage.ready ? setStatus('splat loaded') : watchSplat();
 function watchSplat() {
   const check = setInterval(() => {
@@ -253,6 +275,15 @@ function watchSplat() {
       // live getter, not a snapshot — probes read camera state after drags
       window.__DIAG__ = null;
       Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });
+      if (explorer) {
+        // live getters again — the probe reads greening progress mid-run
+        Object.defineProperty(window, '__EXPLORER__', { get: () => ({
+          pos: explorer.position.toArray(),
+          seedsReady: explorer.seedsReady,
+          grown: explorer.grown,
+          coverage: explorer.coverage,
+        }) });
+      }
     } else if (stage.loadError) { clearInterval(check); setStatus(`splat failed: ${stage.loadError}`, true); }
   }, 100);
 }
@@ -271,6 +302,7 @@ function frameLoop() {
       const visible = applyGains(frame, gains);
       if (recorder) recorder.add({ ...visible, time: frame.time });
       stage.updateParams(visible, dt);
+      explorer?.updateParams(visible, dt);
       monitor.update(frame);
       window.__LAST_ONSET__ = visible.onset; // probe latency audit hook
       if (recorder) {
@@ -278,6 +310,7 @@ function frameLoop() {
         recBtn.textContent = `rec: ● ${secs.toFixed(0)}s`;
       }
     }
+    explorer?.update(dt);
     stage.render(now);
   } catch (err) {
     // surface it on the page — a dead silent loop is the worst failure mode

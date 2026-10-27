@@ -71,6 +71,11 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
+- ~~附记 4 跑图球~~ 已落地（`?play=1` 原型可玩）。下一步候选（等用户选）：
+  跑图手感调参（速度/相机距离/复绿半径）、多场景机制规划（portal +
+  场景清单，等第一批 AI 场景）、地面高度逐场景配置（`?ground=` 或清单）。
+- ruin1 文件本身的绿/品红色偏仍是 Marble 导出问题——修复路径：Marble
+  侧重导或文件预处理。
 - **7e（暂缓待办）**：用户本机跑 `docs/rehearsal.md` 彩排清单——离线
   验证（断网全流程）、双屏物理验证、故障切换演练。条件允许时再做，
   做完写 Stage 7 log 收尾。
@@ -351,3 +356,79 @@ Non-goals: no OSC/MIDI yet, no recording, no fancy latency tuning (Stage 7).
   `.x/.y/.z`；`__DIAG__` 原是加载时快照，probe 读不到拖拽后的相机——
   改为 live getter。
 - `npm test` 120 绿（+13 framing）。
+
+## 2026-10-27 附记 4 — 第三人称跑图球（GO received 2026-10-27）
+
+用户请求："第三人称的球，可以跑图的，球经过的地方长出绿叶，上下左右键移动"。
+这是跑图演出的第一个可玩原型（探索者 + 复绿机制），不是最终演出形态。
+
+**核心机制设计：**
+
+- **球**：three.js 常规网格（`SphereGeometry` + 基础材质，自发光小球），
+  不用 splat——它是演员，场景才是 splat。第三人称相机跟在球后上方
+  （lookAt 球，位置 = 球位 + 后偏移，带阻尼跟随）。
+- **移动**：方向键（↑↓←→）在**相机朝向的地面平面**上移动（按下方向
+  相对相机 yaw 解出世界方向），球贴地滑动 + 移动时自转（滚动感）。
+  地面高度：不引入物理引擎——用场景地形的近似（ruin1 是室内地牢，
+  y≈0 平面起步，逐场景可配 `?ground=` 或场景清单字段）。
+- **复绿（长绿叶）**：预生成一批"种子 splat"（绿色叶片状小高斯，
+  程序化生成 ~2-5k 颗，一次性生成进 `public/splats/green-seeds.ply`，
+  复用 make-test-splat.mjs 的写 PLY 路径）。种子**平时不可见**
+  （opacity≈0），球经过时其附近种子的 opacity 以每帧增量的方式升起
+  （CPU 侧直接改 Spark splat 数据数组，或者用第二个 SplatMesh +
+  per-splat uniform 距离场）。选 CPU 直改：种量小（千级），每帧只
+  更新激活邻域，60fps 无压力，且逻辑全可单测。
+  - 复绿映射纯函数 `src/mapping/greening.js`：`bloom(spots, ballPos,
+    radius, dt) → 每 spot 的新透明度`——球位置 + 种子位置 → 距离衰减
+    升透明度，纯、可测，渲染层只喂参数。
+- **音频联动（协议不变）**：onset → 球发光脉冲（材质 emissive）；
+  band → 复绿半径/速度增益（低音 = 大范围涌出）。仍是映射层纯函数。
+- **相机/模式切换**：`?mode=explore`（或 `?play=1`）进入跑图模式；
+  此模式下禁用 idle spin 与拖拽 orbit（相机被球占用）。
+  默认观赏模式完全不变。
+- **场景**：先用现有 ruin1.ply 当第一张图，方向键在废墟里跑，
+  身后长绿。场景清单/多场景切换（portal）不在本步。
+
+**步骤：**
+
+- [x] 4a. 纯函数先行：`src/mapping/greening.js`（种子位置表 + 球位 +
+      参数 → 每 seed 目标 opacity/增量），单测覆盖：未经过=0、经过后
+      按距离升起、离开后保持（复绿是单向不可逆）、audio 增益作用。
+- [x] 4b. 种子生成：`scripts/make-green-seeds.mjs`（程序化叶片小高斯，
+      贴地散布在 ruin1 地面范围内——从 ruin1.ply 顶点采样地面区域），
+      输出 `public/splats/green-seeds.ply`（本地，不进 git）。
+- [x] 4c. explore 模式（`src/render/explorer.js` 新文件）：球网格 +
+      键盘输入状态机 + 阻尼跟随第三人称相机 + 贴地 y；种子 SplatMesh
+      常驻场景，每帧调 greening 更新其 opacity 数组（只写变化的 splat）。
+- [x] 4d. main.js 接线：`?play=1` 启用；stage 传入 `interactive: !play`
+      禁用拖拽 orbit/wheel（相机是球的）；帮助面板加 `&play=1` 行；
+      copy framing 在该模式下隐藏。默认路径行为不变。
+- [x] 4e. 验证：`npm test` 131 绿（120+11 greening）+ `npm run check` OK；
+      新增 `scripts/probe-explorer.mjs`（CDP Input.dispatchKeyEvent 真实
+      键盘路径）：按住 ↑ 3 秒 → 球从 (0,-0.23,0) 走到 (0,-0.23,-5.02)，
+      追相机跟随，grown 种子 106→446（含等待期起点 bloom），coverage
+      0.056；截图 .check/explorer-before.png / explorer-after.png；默认
+      路径 probe 相机不受影响（camPos 停在 (0,0.4,4.5)）。
+
+## 2026-10-27 附记 3 — 原生颜色 + 只抖动模式（用户请求，待 go）
+
+
+用户请求："所有互动方式都不改变，颜色保持原生的颜色，只抖动"。
+解读：交互层（拖拽取景、驱动切换、录制回放、URL 参数）全部不动；音频
+视觉响应里**颜色相关的全关**（亮度响应、hue 旋转）、**缩放响应也关**
+（per-splat band 脉冲/onset punch、整体呼吸缩放），唯一保留的是
+**位移抖动**（wobble）。默认路径（不带新参数）行为完全不变。
+
+注意：ruin1 的绿/品红色偏是 Marble 导出管线烤进文件的（上段日志已诊断
+为文件层问题），本改动不改文件颜色；修复路径仍是 Marble 侧重导或
+预处理。这里只保证渲染层不额外动颜色。
+
+- [x] 3a. `?mode=shake`：main.js 解析 → createSplatStage →
+      createAvModifier。shake 模式下 dyno 图：rgb 原样进 rgba（无亮度乘、
+      无 hue 旋转）、scales 原样（无脉冲）、仅 center wobble 保留
+      （bandEnergy + uTime 驱动；onset 并入抖动幅度——敲击=猛抖）。
+      stage.js 整体呼吸缩放在此模式恒定 = tfScale。
+- [x] 3b. 验证：`npm test` 120 绿；probe A/B——同一 ramp 帧，
+      ?mode=shake 颜色原生、splatScale=1；默认路径满屏色偏 +
+      splatScale 1.03（旧行为不变）。截图 .check/shake-ramp.png /
+      default-ramp.png。

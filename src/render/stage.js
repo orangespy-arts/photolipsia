@@ -10,7 +10,7 @@ import { parseTf } from './framing.js';
  * The AVParams → visual math lives in mapping (pure, tested); this file is
  * the only place that touches three.js/Spark.
  */
-export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
+export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, interactive = true }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
@@ -56,7 +56,9 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
   const baseScale = 1;
 
   // ── Stage 2: per-splat audio deformation (GPU dyno graph) ──
-  const av = createAvModifier();
+  // shake mode: colors and scales stay native; wobble jitter is the only
+  // audio-driven response.
+  const av = createAvModifier({ shake });
   splat.objectModifier = av.modifier;
 
   // SparkRenderer is the actual splat-drawing pass (a THREE.Mesh attached
@@ -95,7 +97,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
   }
   const pointerState = { active: false, button: 0, x: 0, y: 0, shift: false };
   canvas.addEventListener('pointerdown', (e) => {
-    if (spin !== 0) return; // idle spin owns the motion; drag fights it
+    if (spin !== 0 || !interactive) return; // idle spin owns the motion; drag fights it
     pointerState.active = true;
     pointerState.button = e.button;
     pointerState.shift = e.shiftKey;
@@ -127,7 +129,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
     try { canvas.releasePointerCapture(e.pointerId); } catch { /* already up */ }
   });
   canvas.addEventListener('wheel', (e) => {
-    if (spin !== 0) return;
+    if (spin !== 0 || !interactive) return;
     e.preventDefault();
     orbit.radius = THREE.MathUtils.clamp(
       orbit.radius * Math.exp(e.deltaY * 0.0012), 0.05, 200,
@@ -185,7 +187,9 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
     av.uniforms.uTime.value = params.time;
 
     // gentle whole-object scale remains (Stage 1 behavior, now secondary
-    // to the per-splat region response); multiplies the ?tf= base scale
+    // to the per-splat region response); multiplies the ?tf= base scale.
+    // shake mode: no breathing — object scale stays at the tf base.
+    if (shake) { splat.scale.setScalar(tfScale); return; }
     const breathe = params.bands.low * 0.7 + params.bands.mid * 0.2 + params.bands.high * 0.1;
     const target = (baseScale + breathe * 0.08 + params.onset * 0.1) * tfScale;
     const k = 1 - Math.exp(-dt * 12);
@@ -205,6 +209,8 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf }) {
     get ready() { return ready; },
     get loadError() { return loadError; },
     get splat() { return splat; },
+    get scene() { return scene; },
+    get camera() { return camera; },
     liveCameraState,
     get diag() {
       return {
