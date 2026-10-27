@@ -63,8 +63,11 @@ test('scene config keeps viewing default and supplies matching exploration asset
   const config = sceneConfig(new URLSearchParams('play=1&spawn=2,3,4&ground=5&follow=1,2,3&tf=1,0,0&seeds=/custom.ply'));
   assert.equal(config.splatUrl, '/splats/ruin1.ply');
   assert.equal(config.tf, '1,0,0');
+  assert.equal(config.staticEnvironment, true);
+  assert.equal(sceneConfig(new URLSearchParams('mode=static')).staticEnvironment, true);
+  assert.equal(sceneConfig(new URLSearchParams()).staticEnvironment, false);
   assert.deepEqual(config.explorer, {
-    groundY: 5, spawn: [2, 5, 4], cameraOffset: [1, 2, 3], seedsUrl: '/custom.ply',
+    groundY: 5, spawn: [2, 5, 4], cameraOffset: [1, 2, 3],
   });
   const invalid = sceneConfig(new URLSearchParams('ground=Infinity&spawn=bad&follow=0,0,0'));
   assert.equal(invalid.explorer.groundY, -0.23);

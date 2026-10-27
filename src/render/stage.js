@@ -10,7 +10,7 @@ import { parseTf } from './framing.js';
  * The AVParams → visual math lives in mapping (pure, tested); this file is
  * the only place that touches three.js/Spark.
  */
-export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, interactive = true }) {
+export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, staticEnvironment = false, interactive = true }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
@@ -58,8 +58,8 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   // ── Stage 2: per-splat audio deformation (GPU dyno graph) ──
   // shake mode: colors and scales stay native; wobble jitter is the only
   // audio-driven response.
-  const av = createAvModifier({ shake });
-  splat.objectModifier = av.modifier;
+  const av = staticEnvironment ? null : createAvModifier({ shake });
+  if (av) splat.objectModifier = av.modifier;
 
   // SparkRenderer is the actual splat-drawing pass (a THREE.Mesh attached
   // to the camera) — without it the canvas stays black even though the
@@ -176,7 +176,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
    *   centroid → hue rotation    (per-splat dyno comes in Stage 2)
    */
   function updateParams(params, dt) {
-    if (!ready) return;
+    if (!ready || staticEnvironment) return;
     // feed the GPU dyno graph (its own smoothing is the protocol's job —
     // driver already smoothed; we only ramp gently to avoid pops on edits)
     av.uniforms.uLow.value += (params.bands.low - av.uniforms.uLow.value) * Math.min(1, dt * 30);
@@ -200,7 +200,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     resize();
     // slow idle spin for life; ?spin=0 stills it (also the drag-orbit gate).
     // Writes only the y component so a ?tf= rotation survives.
-    if (spin !== 0) splat.rotation.y = timeSeconds * 0.15;
+    if (!staticEnvironment && spin !== 0) splat.rotation.y = timeSeconds * 0.15;
     renderer.render(scene, camera);
   }
 
@@ -214,7 +214,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     liveCameraState,
     get diag() {
       return {
-        ready, loadError,
+        ready, loadError, staticEnvironment,
         numSplats: splat.numSplats,
         splatScale: splat.scale.x,
         camPos: camera.position.toArray(),

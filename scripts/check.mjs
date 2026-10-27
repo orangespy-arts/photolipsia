@@ -47,6 +47,7 @@ const imp = spawnSync(
       './src/render/explorerMotion.js',
       './src/render/explorerInput.js',
       './src/render/sceneConfig.js',
+      './src/mapping/plants.js',
     ];
     for (const m of mods) await import(m);
     console.log('imports ok');

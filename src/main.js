@@ -242,6 +242,7 @@ const stage = createSplatStage({
   splatUrl: config.splatUrl,
   view,
   tf: config.tf,
+  staticEnvironment: config.staticEnvironment,
   spin: url.get('spin') === '0' || play ? 0 : undefined,
   // ?mode=shake — colors and scales stay native; wobble jitter is the only
   // audio response (ruins scenes that must not recolor)
@@ -259,7 +260,7 @@ if (play) {
     isStageReady: () => stage.ready,
   });
   document.getElementById('frame-copy').hidden = true;
-  setStatus('loading scene and greenery…');
+  setStatus('loading scene…');
 }
 watchSplat();
 function watchSplat() {
@@ -269,7 +270,7 @@ function watchSplat() {
       setStatus(`load failed: ${stage.loadError ?? explorer.loadError}`, true);
     } else if (stage.ready && (!explorer || explorer.seedsReady)) {
       clearInterval(check);
-      setStatus(explorer ? 'explorer ready: arrow keys / WASD move' : `splat loaded (${driver?.id ?? 'no driver'})`);
+      setStatus(explorer ? 'arrow keys / WASD: move and grow leaves (invisible ball)' : `splat loaded (${driver?.id ?? 'no driver'})`);
       // live getter, not a snapshot — probes read camera state after drags
       window.__DIAG__ = null;
       Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });
@@ -280,6 +281,8 @@ function watchSplat() {
           seedsReady: explorer.seedsReady,
           grown: explorer.grown,
           coverage: explorer.coverage,
+          coverageKind: 'plant-pool-utilization',
+          ballOpacity: explorer.ball.material.opacity,
         }) });
       }
     } else if (stage.loadError) { clearInterval(check); setStatus(`splat failed: ${stage.loadError}`, true); }
@@ -300,7 +303,7 @@ function frameLoop() {
       const visible = applyGains(frame, gains);
       if (recorder) recorder.add({ ...visible, time: frame.time });
       stage.updateParams(visible, dt);
-      explorer?.updateParams(visible, dt);
+
       monitor.update(frame);
       window.__LAST_ONSET__ = visible.onset; // probe latency audit hook
       if (recorder) {

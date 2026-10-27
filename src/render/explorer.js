@@ -1,50 +1,40 @@
 import * as THREE from 'three';
-import { SplatMesh } from '@sparkjsdev/spark';
-import { createSeeds, growSeeds } from '../mapping/greening.js';
+import { createPlants } from './plants.js';
 import { movementDirection, advanceMotion, followWeight } from './explorerMotion.js';
 import { bindExplorerInput } from './explorerInput.js';
 
 /**
  * Explorer — third-person ball that rolls through the splat scene and
- * greens the ground behind it. Arrow keys move relative to the camera;
- * a damped chase camera follows; seed splats bloom where the ball passes.
+ * grows mesh plants along its path. Arrow keys move relative to the camera;
+ * a damped chase camera follows; leaves unfold where the invisible anchor passes.
  *
- * Pure decision math lives in mapping/greening.js; this file is the
+ * Pure plant math lives in mapping/plants.js; this file is the
  * render/input shell that feeds it.
  */
 export function createExplorer({ scene, camera, config, isStageReady }) {
-  // ── the ball: a plain mesh — the actor, not the scene ──
-  // Always visible: depthTest off + drawn last, so splats in front (even
-  // spawning inside a big splat) can never hide the actor.
+  // Fully transparent movement anchor: no glow, outline or depth occlusion.
   const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 24, 16),
-    new THREE.MeshStandardMaterial({
-      color: 0xf5f2ea,
-      emissive: 0x3355ff,
-      emissiveIntensity: 0.4,
-      roughness: 0.4,
-      depthTest: false,
-      transparent: true,
-    }),
+    new THREE.SphereGeometry(0.28, 12, 8),
+    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
   );
-  ball.renderOrder = 999;
+  ball.visible = false;
   scene.add(ball);
 
-  // a light for the ball's shading (splats ignore lights; the mesh needs one)
+  // Plants receive light; the scanned environment retains its original colors.
   const light = new THREE.DirectionalLight(0xffffff, 1.2);
   light.position.set(1, 3, 2);
   scene.add(light);
-  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+  scene.add(ambient);
 
   // ── ground height: flat plane per scene (no physics); ruin1 floor ≈ -0.23 ──
-  const { groundY, spawn, cameraOffset, seedsUrl } = config;
-  // ball sits ON the floor, not in it: center = floor + radius (small margin
-  // so splat fuzz doesn't clip the bottom)
+  const { groundY, spawn, cameraOffset } = config;
+  // The anchor and plant roots share exactly the same ground plane.
   const BALL_R = ball.geometry.parameters.radius;
 
   // ── movement state: direction keys held, velocity with damping ──
   const vel = new THREE.Vector3();
-  const pos = new THREE.Vector3(spawn[0], groundY + BALL_R * 1.02, spawn[2]);
+  const pos = new THREE.Vector3(spawn[0], groundY + BALL_R, spawn[2]);
   ball.position.copy(pos);
   ball.visible = false;
   let active = false;
@@ -59,36 +49,13 @@ export function createExplorer({ scene, camera, config, isStageReady }) {
   camera.lookAt(camLook);
   const camTarget = new THREE.Vector3();
 
-  // ── seeds: load the green splats, keep a JS-side position table ──
-  const seedMesh = new SplatMesh({ url: seedsUrl });
-  scene.add(seedMesh);
-  const seedState = { seeds: null, ready: false, error: null };
-  seedMesh.initialized.then(() => {
-    const packed = seedMesh.packedSplats;
-    const positions = [];
-    for (let i = 0; i < packed.numSplats; i++) {
-      positions.push([packed.getSplat(i).center.x, packed.getSplat(i).center.y, packed.getSplat(i).center.z]);
-    }
-    seedState.seeds = createSeeds(positions, 0);
-    seedState.ready = true;
-  }).catch((err) => { seedState.error = err?.message ?? String(err); });
-
-  // audio gains arrive from main.js updateParams
-  const av = { onset: 0, bandLow: 0 };
-
-  function updateParams(params, dt) {
-    av.onset += (params.onset - av.onset) * Math.min(1, dt * 20);
-    av.bandLow += (params.bands.low - av.bandLow) * Math.min(1, dt * 10);
-    // ball glow pulse follows the onset envelope
-    ball.material.emissiveIntensity = 0.4 + av.onset * 2.5;
-  }
+  const plants = createPlants(scene, groundY);
 
   function update(dt) {
-    if (!isStageReady() || !seedState.ready || document.hidden) return;
+    if (!isStageReady() || document.hidden) return;
     if (!active) {
       input.reset();
       active = true;
-      ball.visible = true;
     }
     // direction in camera-yaw frame
     const fwd = new THREE.Vector3();
@@ -100,7 +67,7 @@ export function createExplorer({ scene, camera, config, isStageReady }) {
     const next = advanceMotion([pos.x, pos.z], [vel.x, vel.z], wish, dt);
     pos.x = next.position[0]; pos.z = next.position[1];
     vel.set(next.velocity[0], 0, next.velocity[1]);
-    pos.y = groundY + BALL_R * 1.02;
+    pos.y = groundY + BALL_R;
     ball.position.copy(pos);
 
     // rolling: spin around the axis perpendicular to velocity
@@ -116,50 +83,19 @@ export function createExplorer({ scene, camera, config, isStageReady }) {
     camLook.lerp(pos, followWeight(6, dt));
     camera.lookAt(camLook);
 
-    // greening: raise seed blooms near the ball, write changed opacities
-    if (seedState.ready) {
-      growSeeds(seedState.seeds, [pos.x, pos.y, pos.z], dt, {
-        bandLow: av.bandLow, onset: av.onset,
-      });
-      const packed = seedMesh.packedSplats;
-      let dirty = false;
-      const seeds = seedState.seeds;
-      for (let i = 0; i < seeds.length; i++) {
-        const b = seeds[i].bloom;
-        if (b <= 0) continue;
-        // bloom→opacity: ease so freshly touched seeds fade in softly
-        const opa = b * b * 0.95;
-        const cur = packed.getSplat(i);
-        if (Math.abs(cur.opacity - opa) > 0.01) {
-          packed.setSplat(i, cur.center, cur.scales, cur.quaternion, opa, cur.color);
-          dirty = true;
-        }
-      }
-      if (dirty) packed.needsUpdate = true;
-    }
+    plants.update(dt, pos, speed > 0.01);
   }
 
   return {
-    ball, update, updateParams,
+    ball, update,
     get position() { return pos; },
-    get loadError() { return seedState.error; },
-    get seedsReady() { return seedState.ready; },
-    get coverage() { return seedState.ready ? coverageOf(seedState.seeds) : 0; },
-    // probe/diag hook: how many seeds have any bloom
-    get grown() {
-      if (!seedState.ready) return 0;
-      let n = 0;
-      for (const s of seedState.seeds) if (s.bloom > 0.01) n++;
-      return n;
-    },
+    get seedsReady() { return true; }, // legacy diagnostic name; no seed file required
+    get grown() { return plants.count; },
+    get coverage() { return plants.count / plants.capacity; }, // pool utilization, not scene coverage
     dispose() {
-      input.dispose();
+      input.dispose(); plants.dispose();
+      scene.remove(ball, light, ambient);
+      ball.geometry.dispose(); ball.material.dispose();
     },
   };
-}
-
-function coverageOf(seeds) {
-  let sum = 0;
-  for (const s of seeds) sum += s.bloom;
-  return seeds.length ? sum / seeds.length : 0;
 }

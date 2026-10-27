@@ -1,6 +1,6 @@
 import { parseVec3, parseView } from './framing.js';
 
-// Ground, spawn and seeds are authored in final world coordinates.
+// Ground and spawn are authored in final world coordinates.
 // tf places the source splat in that world; it is not a world transform.
 export function sceneConfig(url) {
   const play = url.get('play') === '1';
@@ -12,12 +12,12 @@ export function sceneConfig(url) {
   if (Math.hypot(offset[0], offset[2]) < 0.1) offset[2] = 3.2;
   return {
     play,
+    staticEnvironment: play || url.get('mode') === 'static',
     splatUrl: url.get('splat') ?? (play ? '/splats/ruin1.ply' : '/splats/test.ply'),
     tf: url.get('tf') ?? undefined,
     view: parseView(url.get('view')) ?? undefined,
     explorer: {
       groundY, spawn: [spawn[0], groundY, spawn[2]], cameraOffset: offset,
-      seedsUrl: url.get('seeds') ?? '/splats/green-seeds.ply',
     },
   };
 }
