@@ -62,7 +62,7 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
   smoothing/envelope/normalization belong to the driver, never the mapping.
 - 2026-10-26: protocol v1 fields fixed in docs/protocol.md; sanitize on every
   untrusted ingress (OSC bridge, recordings).
-- 2026-10-26: zero dependencies until splat rendgering forces one (Stage 1).
+- 2026-10-26: zero dependencies until splat rendering forces one (Stage 1).
 - 2026-10-26 (revised): **two-track plan** — Unity is the live-performance
   destination; this web repo is its lab (cheap iteration on protocol/mapping)
   and the course deliverable. Unity project starts minimal (URP +
@@ -71,40 +71,94 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- Stage 7: performance hardening. Plan below, **waiting for "go"**.
+- **7e（暂缓待办）**：用户本机跑 `docs/rehearsal.md` 彩排清单——离线
+  验证（断网全流程）、双屏物理验证、故障切换演练。条件允许时再做，
+  做完写 Stage 7 log 收尾。
+- Track 2 — minimal Unity project: URP + UnityGaussianSplatting + OSC
+  listener (Room of Sounds OSC.cs), `/av/band/low` → splat scene
+  breathing; protocol doc copied over as source of truth
 
-## Stage 7 plan — performance hardening (drafted 2026-10-26, awaiting go)
+## Track 2 plan — minimal Unity project (drafted 2026-10-26, **waiting for "go"**)
+
+Goal: the performance destination gets a pulse. A minimal Unity project
+(URP) hosting UnityGaussianSplatting, receiving OSC from a UDP listener,
+mapping `/av/*` addresses to a splat scene breathing. The web repo stays
+the lab; Unity becomes the live show.
+
+Key constraints/decisions:
+- **Protocol doc is the contract**: copy `docs/protocol.md` into the
+  Unity project (`Docs/protocol.md`) at setup — any Unity-side mapping
+  ambiguity is resolved against it, not re-decided.
+- **OSC.cs from Room of Sounds** as the listener (the user's known-good
+  reference); no third-party OSC asset.
+- **Iron rules apply unchanged** — driver-side smoothing stays on the
+  sender side (web-audio driver etc.); Unity consumes complete frames
+  and maps only. Smoothing added inside Unity = protocol violation.
+- One Unity mapping behavior per step, testable by eye with the
+  existing `scripts/osc-test-sender.mjs` (it already speaks the protocol).
+
+- [ ] 2.0. **Project skeleton**: Unity version pin (LTS, URP template);
+      drop UnityGaussianSplatting in (git submodule or vendored — decide
+      when we see how it wants its splat assets); a single scene with one
+      splat asset; `Docs/protocol.md` copied. Acceptance: splat visible
+      in Play mode, no console errors.
+- [ ] 2.1. **OSC listener**: OSC.cs wired on a UDP port (match the
+      bridge's 9129? — no: the DSP side sends UDP directly; pick 9000
+      default, documented), address→float table accumulated per frame,
+      `/av/*` only, unknown addresses ignored. Acceptance: a debug HUD
+      or inspector shows live `/av/band/low` values while test-sender
+      runs.
+- [ ] 2.2. **Frame assembly + sanitize**: values clamped to 0–1 on
+      ingress (iron rule 2 enforcement point on this side), missing
+      fields → 0 (silence, never stale). Acceptance: sender stops →
+      values decay/drop, never freeze (same release-decay question as
+      the web osc driver — reuse its decision: no packets for 0.5s →
+      release-decay toward 0).
+- [ ] 2.3. **First mapping — breathing**: `/av/rms` → global splat scale
+      pulse (the web repo's pulseScale equivalent, CPU-side since
+      UnityGaussianSplatting mutation is C#-side; start with a single
+      global multiplier before per-splat work). Acceptance: test-sender
+      ramp makes the splat breathe on the beat.
+- [ ] 2.4. **Verify — user**: run bridge-free path (DSP → UDP → Unity
+      directly) with test-sender; user confirms breathing and that
+      silence is still. Then decide next: per-band regions (like web
+      mapping) or on to the show.
+
+Non-goals: no per-splat GPU mutation yet (Unity side starts CPU/global),
+no timeline/sequencer, no visual parity with the web repo.
+
+## Stage 7 plan — performance hardening (drafted 2026-10-26, GO received)
 
 Goal: the web repo becomes a dependable live instrument — predictable
 frame rate, known latency, multi-screen capable, and a rehearsal checklist
 that proves it runs fully offline.
 
-- [ ] 7a. **Frame-rate instrumentation + fixed path** (`scripts/probe.mjs`
-      already screenshots; add a 300-frame rAF timing audit): measure
-      actual FPS, frame-time p50/p95/max, and GC-spike candidates while a
-      mock signal plays. Fix whatever shows up (likely suspects: monitor
-      DOM writes per frame, splat.rotation allocations, recorder shift
-      cost at ring wrap). Acceptance: 60Hz at p95 ≤ 17ms on the dev box,
-      no frame > 34ms.
-- [ ] 7b. **Latency measurement**: audio→visual round trip. Mic path:
-      clap test with a visible flash + timestamped frames (log onset
-      charge time vs AudioContext time). OSC path: test-sender timestamp
-      vs rendered response in a probe screenshot series. Document actual
-      numbers in docs/ (they're a property of this build, not a goal).
-- [ ] 7c. **Multi-screen**: three.js on a second canvas/monitor via
-      `?screen=2` (same params, different camera angle) — or document
-      that window-dragging across monitors is the supported path (Spark
-      has no native multi-viewport; verify a fullscreen window per
-      output works with 60fps).
-- [ ] 7d. **Full-offline rehearsal**: verify everything resolves offline
-      (import map → local node_modules ✓ already; fonts: none; anything
-      from CDN: none). Checklist doc `docs/rehearsal.md`: pre-gig steps
-      (npm ci, node scripts/serve.mjs, browser kiosk flags, driver URLs,
-      recording as fallback), plus a failover drill (kill the live
-      driver mid-show → playback takes over).
-- [ ] 7e. **Verify**: probe numbers pass 7a, user runs the 7d checklist
-      on this machine (incl. offline: disconnect network, full show
-      flow), latency documented in 7b.
+- [x] 7a. **Frame-rate audit** (`scripts/probe.mjs --fps`): 300-frame
+      rAF timing audit → fps/p50/p95/max + >34ms count, PASS/FAIL exit
+      code. Result: **60.0fps, p95 16.8ms, max 16.9ms, 0 frames >34ms —
+      PASS on first run**. No suspects needed fixing (monitor DOM writes
+      and ring-buffer shift are cheap at these sizes).
+- [x] 7b. **Latency measurement** (`scripts/probe.mjs --latency`): mock
+      onset jump → canvas pixel response, sampled per frame via a
+      drawImage strip. Result: **~16.5ms mean (n=2) — exactly one frame**,
+      the architectural floor (uniform update in frame N renders in N+1).
+      Driver-side numbers documented in docs/rehearsal.md §5. Hook:
+      main.js sets `window.__LAST_ONSET__` per frame.
+- [x] 7c. **Multi-screen**: Spark has no native multi-viewport; the
+      supported path is one fullscreen window per output. Verified two
+      concurrent probe instances each hold 60fps p95 16.8ms — no
+      cross-window contention at this splat count. Physical two-monitor
+      confirmation left to the user (needs real displays).
+- [x] 7d. **Full-offline rehearsal checklist** (`docs/rehearsal.md`):
+      pre-gig steps (npm ci → fps audit → splat present), offline
+      verification (all imports resolve to local node_modules — no CDN,
+      the zero-dependency decision pays off), driver-specific rehearsals
+      each with a recorded fallback, failover drill (kill live source →
+      playback takes over), known-latency section, show-day flow.
+- [ ] 7e. **Verify — user**（暂缓 2026-10-26：用户暂时无法本机验证，
+      移入 Next 待办）：run the docs/rehearsal.md checklist on this
+      machine, including the offline pass (disconnect network, full show
+      flow) and, when two monitors are available, the multi-screen path.
 
 Non-goals: no WebGPU migration, no worker-thread DSP, no new drivers.
 

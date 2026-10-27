@@ -2,6 +2,49 @@
 
 一次工作一段，新的在上。
 
+## 2026-10-26 — Stage 7 (7a–7d): 演出硬化 + 驾驶员切换 UI + strategy 恢复
+
+### What
+- **7a 帧率审计**（`scripts/probe.mjs --fps`）：300 帧 rAF 计时 →
+  fps/p50/p95/max + >34ms 帧数，PASS/FAIL 退出码。结果：**60.0fps，
+  p95 16.8ms，max 16.9ms，0 帧 >34ms —— 一次通过**。嫌疑对象
+  （monitor DOM 写入、环形缓冲 shift）在这些规模下都不构成瓶颈，
+  无需修改。
+- **7b 延迟测量**（`scripts/probe.mjs --latency`）：mock onset 跳变 →
+  画布像素响应（逐帧 drawImage 条带采样）。结果：**均值 ~16.5ms
+  （n=2）—— 恰好一帧**，即架构下限（帧 N 更新的 uniform 在 N+1 渲染）。
+  驱动侧数字记录在 docs/rehearsal.md §5。钩子：main.js 每帧写
+  `window.__LAST_ONSET__`。
+- **7c 多屏**：Spark 无原生多视口；支持路径是每输出一个全屏窗口。
+  两个并发 probe 实例各自保持 60fps p95 16.8ms —— 此 splat 规模下
+  无跨窗口争用。物理双屏确认留给用户（需真实显示器）。
+- **7d 全离线彩排清单**（`docs/rehearsal.md`）：开演前步骤
+  （npm ci → fps 审计 → splat 就位）、离线验证（全部导入解析到本地
+  node_modules —— 无 CDN，零依赖决策兑现）、各驱动彩排+录制回退、
+  故障切换演练（杀掉现场源 → 回放接管）、已知延迟、演出日流程。
+- **7e 用户验证暂缓**（用户暂时无法本机验证）：彩排清单（含断网
+  全流程）+ 双屏物理验证，移入 strategy.md Next 待办。
+- **会话 UI 打磨**（两个已提交 commit）：HUD 增加**驱动切换按钮行**
+  （mock/web-audio/osc/midi/playback，高亮当前项；切换即导航——
+  AudioContext/WS/MIDI 属页面生命周期，reload 干净释放；清除
+  driver 专属参数防误导）；`?splat=/splats/x.ply` 自定义场景
+  （public/ 下任意 3DGS .ply/.splat，y-up 翻转与 dyno modifier 照常
+  生效），帮助面板补条目。
+- **strategy.md 意外回退修复**：commit 8370444（"track2 plan"）把
+  strategy.md 覆盖成了 Stage 7 未开工的旧版——7a–7d 勾选结果、7e
+  暂缓说明、整份 Track 2 计划全部丢失（残留 "rendgering" 错字）。
+  从 881e335 恢复完整版本。教训：提交前 diff 要看一眼方向对不对。
+
+### Verification
+- `npm test` 107 绿；`npm run check` OK。
+- probe.mjs --fps/--latency 输出见上；rehearsal.md 用户侧验证暂缓。
+
+### Next
+- 7e（暂缓）：用户本机跑 docs/rehearsal.md（断网全流程、双屏、
+  故障切换）。
+- Track 2（Unity 工程）计划已就绪，等 "go"；docs/unity-setup-guide.md
+  是配套搭建指南（状态：未开始）。
+
 ## 2026-10-26 — Stage 6: param recorder/playback + session UI
 
 ### What
