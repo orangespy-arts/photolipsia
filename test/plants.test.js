@@ -63,7 +63,7 @@ test('plants root at ground, unfold after leaving, deduplicate and obey capacity
   for (let i = 0; i < 10; i++) plants.update(0.1, { x: i * 2, z: 0 }, true);
   assert.equal(plants.count, 40);
   assert.equal(plants.stems.count, 40);
-  assert.equal(plants.leaves.count, 160);
+  assert.equal(plants.leaves.count, 240);
   plants.dispose(); assert.equal(scene.children.length, 0);
 });
 

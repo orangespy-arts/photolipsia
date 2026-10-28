@@ -34,6 +34,10 @@
     .toggle.recording { color: #e0705f; border-color: #e0705f; }
     .btnrow { display: flex; gap: 0.4rem; flex-wrap: wrap; }
     .toggle.current { color: #e8e6e3; border-color: #d9c25b; }
+    .plant-control { margin-top: 0.65rem; padding: 0.6rem 0.75rem; width: min(290px, 75vw); background: rgba(11,11,16,0.85); border: 1px solid #2c2c36; border-radius: 8px; }
+    .plant-control label { display: flex; justify-content: space-between; font-size: 0.8rem; }
+    .plant-control input { display: block; width: 100%; margin: 0.5rem 0; accent-color: #a6c67a; cursor: pointer; }
+    .plant-control small { display: block; color: #aaa9a5; font-size: 0.68rem; }
     #help {
       margin: 0.5rem 0 0; padding: 0.5rem; max-width: 440px;
       background: rgba(11, 11, 16, 0.85); border: 1px solid #2c2c36;
@@ -53,10 +57,11 @@
   </style>
 </head>
 <body>
-  <canvas id="stage"></canvas>
+  <canvas id="stage" aria-label="Interactive scene: click to lock the mouse, Esc to release"></canvas>
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
     <p id="status">loading…</p>
+    <p id="look-status" hidden style="margin:0.25rem 0;font-size:0.8rem;color:#e8e6e3"></p>
     <div class="btnrow">
       <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>
       <button id="rec-toggle" class="toggle" type="button">rec: off</button>
@@ -64,6 +69,11 @@
       <button id="help-toggle" class="toggle" type="button">?</button>
     </div>
     <div class="btnrow" id="driver-row" style="margin-top:0.4rem"></div>
+    <div id="plant-controls" class="plant-control" hidden>
+      <label for="onset-size">Onset Size <output id="onset-size-value" for="onset-size">1.0×</output></label>
+      <input id="onset-size" type="range" min="0" max="10" step="0.1" value="1" aria-describedby="onset-size-help" />
+      <small id="onset-size-help">Beat-driven height boost · 0 = off · 1 = default<br>Press Esc to release the mouse and adjust.</small>
+    </div>
     <pre id="help" hidden>URL params:
   ?driver=mock|web-audio|osc|midi|playback
   &amp;kind=pulse|ramp|silence   (mock)
@@ -72,20 +82,23 @@
   &amp;osc=host:port              (osc — default localhost:9128)
   &amp;rec=name.jsonl &amp;t0=5      (playback — file picker if no rec)
   &amp;gain=low=1.5,onset=2      (response gains; 0 mutes a field)
+  &amp;onsetSize=1             (plant onset height boost, 0–10)
   &amp;beat=0                     (start with beat tracking off)
   &amp;splat=/splats/x.ply        (your own splat scene; .ply/.splat in public/)
   &view=look@cam &spin=0  (camera aim for custom scenes; 0 = no idle spin)
   &mode=shake             (colors+scale stay native; only jitter)
   &play=1                (glass ball; arrows/WASD grow leaves; static environment)
   &ground=-0.23 &spawn=0,-0.23,0 (world-space floor and spawn; ground overrides spawn y)
-  &follow=0,1.6,3.2      (camera offset from ball, world-space)
+  &follow=0,1.6,3.2      (initial camera offset; mouse rotates around ball)
   &tf=x,y,z@rx,ry,rz@s    (splat transform: position @ euler-degrees @ scale)
-Drag: orbit (left) / pan (right or Shift) / wheel = zoom — needs ?spin=0.
+Explorer: click canvas to lock mouse; mouse aims, WASD moves, Esc releases.
+Right-drag also aims when pointer lock is unavailable.
+Viewing mode only: orbit (left) / pan (right or Shift) / wheel = zoom — needs ?spin=0.
 "copy framing" puts the current camera+tf into the URL for sharing.
 Buttons: the driver row switches drivers (one per click, page reloads);
 Explorer defaults to ruin1.ply; movement waits for the scene to load.
 Leaves grow from the configured ground plane; no seed PLY is needed.
-Plant pool: 2400 persistent plants per session. Audio does not animate exploration.
+Plant pool: 2400 persistent plants per session. Plants vary in shape: bass pulses, mids sway, highs flutter. The environment and glass ball stay unchanged.
 tf places the source scene; it does not transform the world-space floor.
 &mode=static freezes the environment in viewing mode too.
 rec records the current visuals → .jsonl download;

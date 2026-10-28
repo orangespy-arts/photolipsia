@@ -257,9 +257,32 @@ if (play) {
     scene: stage.scene,
     camera: stage.camera,
     config: config.explorer,
+    canvas,
+    onLookStatus: (message) => {
+      const hint = document.getElementById('look-status');
+      hint.hidden = false;
+      hint.textContent = message;
+    },
     isStageReady: () => stage.ready,
   });
   document.getElementById('frame-copy').hidden = true;
+  const onsetSlider = document.getElementById('onset-size');
+  const onsetValue = document.getElementById('onset-size-value');
+  document.getElementById('plant-controls').hidden = false;
+  function setOnsetSize(value) {
+    const size = explorer.setOnsetSize(value);
+    onsetSlider.value = String(size);
+    onsetValue.value = `${size.toFixed(1)}×`;
+    onsetSlider.setAttribute('aria-valuetext', `${size.toFixed(1)} times onset response`);
+    return size;
+  }
+  setOnsetSize(Number(url.get('onsetSize') ?? 1));
+  onsetSlider.addEventListener('input', () => {
+    const size = setOnsetSize(Number(onsetSlider.value));
+    const next = new URL(location.href);
+    next.searchParams.set('onsetSize', size.toFixed(1));
+    history.replaceState(null, '', next);
+  });
   setStatus('loading scene…');
 }
 watchSplat();
@@ -278,11 +301,13 @@ function watchSplat() {
         // live getters again — the probe reads greening progress mid-run
         Object.defineProperty(window, '__EXPLORER__', { get: () => ({
           pos: explorer.position.toArray(),
+          view: explorer.view,
           seedsReady: explorer.seedsReady,
           grown: explorer.grown,
           coverage: explorer.coverage,
           coverageKind: 'plant-pool-utilization',
           ballOpacity: explorer.ball.material.opacity,
+          plantAudioScale: explorer.plantAudioScale,
         }) });
       }
     } else if (stage.loadError) { clearInterval(check); setStatus(`splat failed: ${stage.loadError}`, true); }
@@ -303,6 +328,7 @@ function frameLoop() {
       const visible = applyGains(frame, gains);
       if (recorder) recorder.add({ ...visible, time: frame.time });
       stage.updateParams(visible, dt);
+      explorer?.updateParams(visible);
 
       monitor.update(frame);
       window.__LAST_ONSET__ = visible.onset; // probe latency audit hook
