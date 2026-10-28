@@ -270,7 +270,7 @@ function watchSplat() {
       setStatus(`load failed: ${stage.loadError ?? explorer.loadError}`, true);
     } else if (stage.ready && (!explorer || explorer.seedsReady)) {
       clearInterval(check);
-      setStatus(explorer ? 'arrow keys / WASD: move and grow leaves (invisible ball)' : `splat loaded (${driver?.id ?? 'no driver'})`);
+      setStatus(explorer ? 'arrow keys / WASD: move and grow leaves (glass ball)' : `splat loaded (${driver?.id ?? 'no driver'})`);
       // live getter, not a snapshot — probes read camera state after drags
       window.__DIAG__ = null;
       Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });

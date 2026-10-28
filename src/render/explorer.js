@@ -1,23 +1,19 @@
 import * as THREE from 'three';
 import { createPlants } from './plants.js';
+import { createGlassBall } from './glassBall.js';
 import { movementDirection, advanceMotion, followWeight } from './explorerMotion.js';
 import { bindExplorerInput } from './explorerInput.js';
 
 /**
  * Explorer — third-person ball that rolls through the splat scene and
  * grows mesh plants along its path. Arrow keys move relative to the camera;
- * a damped chase camera follows; leaves unfold where the invisible anchor passes.
+ * a damped chase camera follows; leaves unfold where the glass ball passes.
  *
  * Pure plant math lives in mapping/plants.js; this file is the
  * render/input shell that feeds it.
  */
 export function createExplorer({ scene, camera, config, isStageReady }) {
-  // Fully transparent movement anchor: no glow, outline or depth occlusion.
-  const ball = new THREE.Mesh(
-    new THREE.SphereGeometry(0.28, 12, 8),
-    new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
-  );
-  ball.visible = false;
+  const ball = createGlassBall();
   scene.add(ball);
 
   // Plants receive light; the scanned environment retains its original colors.
@@ -56,6 +52,7 @@ export function createExplorer({ scene, camera, config, isStageReady }) {
     if (!active) {
       input.reset();
       active = true;
+      ball.visible = true;
     }
     // direction in camera-yaw frame
     const fwd = new THREE.Vector3();

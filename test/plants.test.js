@@ -67,7 +67,7 @@ test('plants root at ground, unfold after leaving, deduplicate and obey capacity
   plants.dispose(); assert.equal(scene.children.length, 0);
 });
 
-test('invisible explorer waits for scene, touches ground and grows leaves on movement', (t) => {
+test('glass explorer waits for scene, touches ground and grows leaves on movement', (t) => {
   const priorWindow = globalThis.window, priorDocument = globalThis.document;
   globalThis.window = new EventTarget();
   globalThis.document = new EventTarget();
@@ -78,18 +78,20 @@ test('invisible explorer waits for scene, touches ground and grows leaves on mov
     config: { groundY: 2, spawn: [3, 2, 4], cameraOffset: [0, 1.6, 3.2] } });
   t.after(() => explorer.dispose());
   near(explorer.position.y - explorer.ball.geometry.parameters.radius, 2);
-  assert.equal(explorer.ball.material.opacity, 0);
+  assert.equal(explorer.ball.material.transparent, true);
+  assert.equal(explorer.ball.visible, false);
+  near(explorer.ball.geometry.parameters.radius, 0.22);
   assert.equal(explorer.ball.material.depthWrite, false);
   explorer.update(0.1); assert.equal(explorer.grown, 0);
   ready = true; explorer.update(0.1);
-  assert.equal(explorer.ball.visible, false);
+  assert.equal(explorer.ball.visible, true);
   assert.equal(explorer.grown, 0);
   const press = new Event('keydown'); press.code = 'KeyD'; window.dispatchEvent(press);
   for (let i = 0; i < 10; i++) explorer.update(1 / 60);
   assert.ok(explorer.position.x > 3);
   assert.ok(explorer.grown > 0);
   near(explorer.position.y - explorer.ball.geometry.parameters.radius, 2);
-  assert.equal(explorer.ball.visible, false);
+  assert.equal(explorer.ball.visible, true);
   window.dispatchEvent(new Event('blur'));
   const last = explorer.position.clone(); explorer.update(0.1);
   assert.deepEqual(explorer.position.toArray(), last.toArray());
