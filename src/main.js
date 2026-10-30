@@ -9,6 +9,7 @@ import { fmtVec3, fmtTf } from './render/framing.js';
 import { createMonitor } from './ui/monitor.js';
 import * as THREE from 'three';
 import { sceneConfig } from './render/sceneConfig.js';
+import { createJourney } from './render/journey.js';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -26,6 +27,10 @@ function setReady() {
 
 // ── driver selection via ?driver= (default: mock) ──
 const url = new URLSearchParams(location.search);
+const zombieScene = url.get('scene') === 'city' || url.get('journey') === '1'
+  || url.get('splat') === '/local-scenes/apocalyptic-zombie-city.ply';
+document.getElementById('zombie-entry').hidden = zombieScene;
+document.getElementById('scene-home').hidden = !zombieScene;
 const driverId = url.get('driver') ?? 'mock';
 
 const DRIVERS = ['mock', 'web-audio', 'osc', 'midi', 'playback'];
@@ -236,8 +241,24 @@ document.getElementById('frame-copy').addEventListener('click', () => {
 // arrow keys (WASD too) and greens the ground it passes. The camera follows
 // the ball, so idle spin, drag-orbit and copy-framing are disabled there.
 const config = sceneConfig(url);
+if (config.journey) {
+  document.body.classList.add('journey', 'controls-collapsed');
+  document.getElementById('start-explore').hidden = true;
+  const controlsToggle = document.getElementById('controls-toggle');
+  controlsToggle.hidden = false;
+  controlsToggle.addEventListener('click', () => {
+    const collapsed = document.body.classList.toggle('controls-collapsed');
+    controlsToggle.textContent = collapsed ? '声音与生长设置' : '收起设置';
+    controlsToggle.setAttribute('aria-expanded', String(!collapsed));
+  });
+}
 const { play, view } = config;
-const stage = createSplatStage({
+const onLookStatus = (message) => {
+  const hint = document.getElementById('look-status');
+  hint.hidden = false;
+  hint.textContent = config.journey ? 'WASD / 方向键移动 · 右键拖动视角 · Esc 释放鼠标' : message;
+};
+const stage = config.journey ? createJourney({ canvas, startId: url.get('scene'), onLookStatus }) : createSplatStage({
   canvas,
   splatUrl: config.splatUrl,
   view,
@@ -253,7 +274,7 @@ const stage = createSplatStage({
 
 let explorer = null;
 if (play) {
-  explorer = createExplorer({
+  explorer = config.journey ? stage.explorer : createExplorer({
     scene: stage.scene,
     camera: stage.camera,
     config: config.explorer,
@@ -293,7 +314,7 @@ function watchSplat() {
       setStatus(`load failed: ${stage.loadError ?? explorer.loadError}`, true);
     } else if (stage.ready && (!explorer || explorer.seedsReady)) {
       clearInterval(check);
-      setStatus(explorer ? 'arrow keys / WASD: move and grow leaves (glass ball)' : `splat loaded (${driver?.id ?? 'no driver'})`);
+      setStatus(explorer ? (explorer.navigationStatus ?? 'arrow keys / WASD: move and grow leaves (glass ball)') : `splat loaded (${driver?.id ?? 'no driver'})`);
       // live getter, not a snapshot — probes read camera state after drags
       window.__DIAG__ = null;
       Object.defineProperty(window, '__DIAG__', { get: () => stage.diag });

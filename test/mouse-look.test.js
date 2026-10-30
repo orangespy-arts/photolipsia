@@ -61,7 +61,8 @@ test('turning 90 degrees makes W move right in world coordinates; Esc-style unlo
   doc.exitPointerLock = () => { doc.pointerLockElement = null; event(doc, 'pointerlockchange'); };
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
   const explorer = createExplorer({ scene, camera, canvas, isStageReady: () => true,
-    config: { groundY: 0, spawn: [0, 0, 0], cameraOffset: [0, 1.6, 3.2] } });
+    config: { groundY: 0, spawn: [0, 0, 0], cameraOffset: [0, 1.6, 3.2],
+      navigation: { bounds: { min: [-5, 0, -5], max: [5, 5, 5] }, obstacles: [] } } });
   t.after(() => explorer.dispose());
   explorer.update(1 / 60); event(canvas, 'click');
   event(doc, 'mousemove', { movementX: Math.PI / 2 / 0.0025, movementY: 0 });

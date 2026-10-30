@@ -67,7 +67,7 @@ test('scene config keeps viewing default and supplies matching exploration asset
   assert.equal(sceneConfig(new URLSearchParams('mode=static')).staticEnvironment, true);
   assert.equal(sceneConfig(new URLSearchParams()).staticEnvironment, false);
   assert.deepEqual(config.explorer, {
-    groundY: 5, spawn: [2, 5, 4], cameraOffset: [1, 2, 3],
+    groundY: 5, spawn: [2, 5, 4], cameraOffset: [1, 2, 3], navigation: null,
   });
   const invalid = sceneConfig(new URLSearchParams('ground=Infinity&spawn=bad&follow=0,0,0'));
   assert.equal(invalid.explorer.groundY, -0.23);

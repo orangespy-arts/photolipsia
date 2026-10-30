@@ -75,7 +75,8 @@ test('glass explorer waits for scene, touches ground and grows leaves on movemen
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
   let ready = false;
   const explorer = createExplorer({ scene, camera, isStageReady: () => ready,
-    config: { groundY: 2, spawn: [3, 2, 4], cameraOffset: [0, 1.6, 3.2] } });
+    config: { groundY: 2, spawn: [3, 2, 4], cameraOffset: [0, 1.6, 3.2],
+      navigation: { bounds: { min: [-5, 2, -5], max: [10, 8, 10] }, obstacles: [] } } });
   t.after(() => explorer.dispose());
   near(explorer.position.y - explorer.ball.geometry.parameters.radius, 2);
   assert.equal(explorer.ball.material.transparent, true);
@@ -95,4 +96,28 @@ test('glass explorer waits for scene, touches ground and grows leaves on movemen
   window.dispatchEvent(new Event('blur'));
   const last = explorer.position.clone(); explorer.update(0.1);
   assert.deepEqual(explorer.position.toArray(), last.toArray());
+  explorer.setEnabled(false);
+  const held = new Event('keydown'); held.code = 'KeyD'; window.dispatchEvent(held);
+  explorer.update(1);
+  assert.deepEqual(explorer.position.toArray(), last.toArray());
+  explorer.reset(); explorer.setEnabled(true);
+  explorer.update(0.1);
+  assert.deepEqual(explorer.position.toArray(), [3, 2.22, 4]);
+});
+
+test('uncalibrated explorer holds position and reports why movement is paused', (t) => {
+  const priorWindow = globalThis.window, priorDocument = globalThis.document;
+  globalThis.window = new EventTarget(); globalThis.document = new EventTarget();
+  t.after(() => { globalThis.window = priorWindow; globalThis.document = priorDocument; });
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
+  const explorer = createExplorer({ scene, camera, isStageReady: () => true,
+    config: { groundY: 0, spawn: [0, 0, 0], cameraOffset: [0, 1.6, 3.2], navigation: null } });
+  t.after(() => explorer.dispose());
+  explorer.update(0.1);
+  const initial = explorer.position.clone();
+  const press = new Event('keydown'); press.code = 'KeyW'; window.dispatchEvent(press);
+  explorer.update(10);
+  assert.deepEqual(explorer.position.toArray(), initial.toArray());
+  assert.equal(explorer.grown, 0);
+  assert.match(explorer.navigationStatus, /calibration/);
 });

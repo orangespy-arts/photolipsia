@@ -10,8 +10,8 @@ import { parseTf } from './framing.js';
  * The AVParams → visual math lives in mapping (pure, tested); this file is
  * the only place that touches three.js/Spark.
  */
-export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, staticEnvironment = false, interactive = true }) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, staticEnvironment = false, interactive = true, splatBudget }) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
   const scene = new THREE.Scene();
@@ -30,7 +30,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   if (view?.camPos) camera.position.set(...view.camPos);
   if (view?.lookAt) camera.lookAt(...view.lookAt);
 
-  const splat = new SplatMesh({ url: splatUrl });
+  const splat = new SplatMesh({ url: splatUrl, ...(splatBudget ? { lod: true } : {}) });
   splat.quaternion.array = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // y-down → y-up
   splat.scale.setScalar(1);
   scene.add(splat);
@@ -64,7 +64,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   // SparkRenderer is the actual splat-drawing pass (a THREE.Mesh attached
   // to the camera) — without it the canvas stays black even though the
   // splat data is loaded and counted.
-  const sparkRenderer = new SparkRenderer({ renderer });
+  const sparkRenderer = new SparkRenderer({ renderer, ...(splatBudget ? { lodSplatCount: splatBudget } : {}) });
   camera.add(sparkRenderer);
   scene.add(camera);
 
@@ -152,9 +152,10 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   };
 
   let ready = false;
+  let disposed = false;
   let loadError = null;
   splat.initialized.then(
-    () => { ready = true; },
+    () => { if (disposed) splat.dispose(); else ready = true; },
     (err) => { loadError = err?.message ?? String(err); },
   );
 
@@ -206,6 +207,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
 
   return {
     updateParams, render,
+    dispose() { disposed = true; splat.dispose(); sparkRenderer.dispose(); renderer.dispose(); },
     get ready() { return ready; },
     get loadError() { return loadError; },
     get splat() { return splat; },
