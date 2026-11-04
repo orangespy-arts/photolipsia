@@ -34,6 +34,11 @@ const imp = spawnSync(
   ['-e', `
     const mods = [
       './src/protocol/params.js',
+      './src/input/gamepad.js',
+      './src/render/flightMotion.js',
+      './src/render/flightController.js',
+      './src/mapping/vjEffects.js',
+      './src/render/hydraStage.js',
       './src/drivers/registry.js',
       './src/drivers/mock.js',
       './src/drivers/webaudio/dsp.js',

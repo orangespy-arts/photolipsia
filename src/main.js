@@ -10,6 +10,8 @@ import { createMonitor } from './ui/monitor.js';
 import * as THREE from 'three';
 import { sceneConfig } from './render/sceneConfig.js';
 import { createJourney } from './render/journey.js';
+import { createFlightController } from './render/flightController.js';
+import { createVjEffects } from './ui/vjEffects.js';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -211,7 +213,10 @@ document.getElementById('help-toggle').addEventListener('click', () => {
 // copy framing link: current camera (?view) + splat transform (?tf) back
 // into the URL — a framed shot is a shareable URL, not a screenshot
 document.getElementById('frame-copy').addEventListener('click', () => {
-  const cam = stage.liveCameraState();
+  const cam = config.vj ? {
+    camPos: stage.camera.position.toArray(),
+    lookAt: stage.camera.getWorldDirection(new THREE.Vector3()).add(stage.camera.position).toArray(),
+  } : stage.liveCameraState();
   const next = new URLSearchParams(location.search);
   next.set('view', `${fmtVec3(cam.lookAt)}@${fmtVec3(cam.camPos)}`);
   next.set('spin', '0');
@@ -264,13 +269,33 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
   view,
   tf: config.tf,
   staticEnvironment: config.staticEnvironment,
-  spin: url.get('spin') === '0' || play ? 0 : undefined,
+  spin: url.get('spin') === '0' || play || config.vj ? 0 : undefined,
   // ?mode=shake — colors and scales stay native; wobble jitter is the only
   // audio response (ruins scenes that must not recolor)
   shake: url.get('mode') === 'shake',
   // play mode: the explorer owns the camera — orbit/wheel handlers would fight it
-  interactive: !play,
+  interactive: !play && !config.vj,
 });
+
+let flight = null;
+let effects = null;
+if (config.vj) {
+  document.body.classList.add('vj');
+  document.getElementById('vj-controls').hidden = false;
+  document.getElementById('scene-home').hidden = false;
+  if (url.get('hydra') !== '0') effects = createVjEffects({ source: canvas,
+    output: document.getElementById('hydra-output'), panel: document.getElementById('effect-controls') });
+  flight = createFlightController({ camera: stage.camera, isReady: () => stage.ready && !stage.loadError,
+    onInput: pad => effects?.setInput(pad),
+    onStatus: message => { document.getElementById('flight-status').textContent = message; } });
+  document.getElementById('flight-reset').addEventListener('click', () => flight.reset());
+  const speed = document.getElementById('flight-speed');
+  speed.addEventListener('input', () => {
+    document.getElementById('flight-speed-value').textContent = `${flight.setSpeed(Number(speed.value)).toFixed(1)}`;
+  });
+  window.addEventListener('pagehide', () => { flight.dispose(); effects?.dispose(); }, { once: true });
+  window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+}
 
 let explorer = null;
 if (play) {
@@ -341,7 +366,8 @@ let last = performance.now() / 1000;
 function frameLoop() {
   try {
     const now = performance.now() / 1000;
-    const dt = Math.min(0.1, now - last);
+    const elapsed = now - last;
+    const dt = Math.min(0.1, elapsed);
     last = now;
 
     if (driver) {
@@ -359,7 +385,9 @@ function frameLoop() {
       }
     }
     explorer?.update(dt);
+    flight?.update(elapsed);
     stage.render(now);
+    effects?.render(elapsed, stage.ready && !stage.loadError);
   } catch (err) {
     // surface it on the page — a dead silent loop is the worst failure mode
     setStatus(`render loop error: ${err.message}`, true);

@@ -21,6 +21,10 @@
       overflow: hidden;
     }
     #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+    #hydra-output { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    #hydra-output[hidden], #effect-controls[hidden] { display: none; }
+    #effect-controls { border-top: 1px solid #41574d; margin-top: 0.6rem; padding-top: 0.5rem; }
+    #effect-controls select { font: inherit; max-width: 100%; background: #1c1c24; color: #eee; }
     .hud { position: fixed; top: 1rem; left: 1rem; z-index: 10; }
     h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.08em; margin: 0 0 0.5rem; }
     #status { color: #8a8782; min-height: 1.5em; margin: 0; }
@@ -38,6 +42,10 @@
     .scene-link:hover { background: #393126; }
     .scene-link:focus-visible { outline: 2px solid #f3d992; outline-offset: 3px; }
     .scene-link[hidden] { display: none; }
+    .vj #start-explore, .vj #zombie-entry, .vj #vj-entry, .vj #monitor, .vj #driver-row, .vj #rec-toggle, .vj #beat-toggle { display: none; }
+    #vj-controls { max-width: min(380px, calc(100vw - 4rem)); padding: 0.75rem; background: #111c; border: 1px solid #41574d; border-radius: 8px; }
+    #vj-controls[hidden] { display: none; }
+    #vj-controls p { margin: 0.4rem 0; }
     .journey-world, .journey-input, .portal-particles { position: fixed; inset: 0; width: 100%; height: 100%; }
     .journey-input { z-index: 4; outline: none; }
     .portal-particles { z-index: 3; pointer-events: none; }
@@ -73,14 +81,33 @@
 </head>
 <body>
   <canvas id="stage" aria-label="Interactive scene: click to lock the mouse, Esc to release"></canvas>
+  <canvas id="hydra-output" hidden aria-label="Hydra 效果画面"></canvas>
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
     <div class="btnrow" aria-label="场景入口">
       <a id="start-explore" class="toggle scene-link" href="?journey=1">开始探索 · 粒子传送门</a>
       <a id="zombie-entry" class="toggle scene-link" href="?scene=city&amp;mode=static&amp;spin=0">查看僵尸城</a>
+      <a class="toggle scene-link" href="/gamepad.html">手柄检测</a>
+      <a id="vj-entry" class="toggle scene-link" href="?vj=1&amp;scene=ruin">手柄 VJ · 自由飞行</a>
       <a id="scene-home" class="toggle scene-link" href="/" hidden>返回首页</a>
     </div>
     <p id="status">loading…</p>
+    <section id="vj-controls" hidden aria-label="手柄飞行控制">
+      <p id="flight-status" role="status">等待手柄…</p>
+      <p>自由飞行 · 可穿越场景表面</p>
+      <label for="flight-speed">移动速度</label>
+      <input id="flight-speed" type="range" min="0.1" max="5" step="0.1" value="1.5">
+      <output id="flight-speed-value">1.5</output>
+      <button id="flight-reset" class="toggle" type="button">回到入口镜头</button>
+      <div id="effect-controls" hidden>
+        <label for="effect-preset">Hydra 效果</label>
+        <select id="effect-preset"><option value="0">回声</option><option value="1">波纹</option><option value="2">镜像</option></select>
+        <p data-effect-status>正在加载 Hydra…</p>
+        <p>LT 拖影 · RT 扭曲 · LB/RB 换效果 · B 清晰复位</p>
+        <button class="toggle" type="button" data-effect-preview aria-pressed="false">预览效果</button>
+        <button class="toggle" type="button" data-effect-reset>恢复清晰画面</button>
+      </div>
+    </section>
     <p id="journey-status" hidden aria-live="polite"></p>
     <button id="portal-open" class="toggle" type="button" hidden>开启传送门</button>
     <button id="controls-toggle" class="toggle" type="button" hidden aria-expanded="false">声音与生长设置</button>
@@ -102,6 +129,7 @@
   &amp;kind=pulse|ramp|silence   (mock)
   &amp;source=mic|file            (web-audio)
   &amp;simulate=1                 (midi — scripted performance)
+  &amp;vj=1                       (gamepad free flight; sticks + D-pad up/down)
   &amp;osc=host:port              (osc — default localhost:9128)
   &amp;rec=name.jsonl &amp;t0=5      (playback — file picker if no rec)
   &amp;gain=low=1.5,onset=2      (response gains; 0 mutes a field)
