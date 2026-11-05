@@ -2,7 +2,7 @@ import { clampInput } from '../input/gamepad.js';
 
 // Ten presets, each its own visual language; none duplicates a button layer
 // (invert, RGB split, neon edge, mono, hue, pixelate, freeze — see buttonFx.js).
-export const EFFECT_NAMES = ['回声', '波纹', '漩涡', '隧道', '扫描故障', '频闪', '色阶', '版画', '分屏', '液化'];
+export const EFFECT_NAMES = ['Echo', 'Ripple', 'Vortex', 'Tunnel', 'Scan glitch', 'Strobe', 'Posterize', 'Print', 'Split', 'Melt'];
 export const effectState = (preset = 0) => ({ preset, feedback: 0, distortion: 0,
   armed: false, lb: false, rb: false, reset: true });
 

@@ -17,9 +17,9 @@ export function reduceInput(state, event) {
     case 'mic-ok':
       return s.pending ? { mode: 'mic', pending: false, label: event.label ?? '', error: '' } : s;
     case 'mic-failed':
-      return { mode: 'music', pending: false, label: '', error: event.error || '无法使用麦克风' };
+      return { mode: 'music', pending: false, label: '', error: event.error || 'Could not use the microphone' };
     case 'mic-ended':
-      return s.mode === 'mic' ? { mode: 'music', pending: false, label: '', error: '麦克风已断开，已切回音乐' } : s;
+      return s.mode === 'mic' ? { mode: 'music', pending: false, label: '', error: 'Microphone disconnected — back to music' } : s;
     default:
       return s;
   }
@@ -27,7 +27,7 @@ export function reduceInput(state, event) {
 
 // what the panel shows for a state
 export function inputLabels(s, trackName = '') {
-  if (s.pending) return { button: '🎤 正在打开麦克风…', status: '请在浏览器弹窗里允许麦克风', canPlay: false };
-  if (s.mode === 'mic') return { button: '♪ 切回音乐', status: `输入：麦克风${s.label ? ` · ${s.label}` : ''}`, canPlay: false };
-  return { button: '🎤 切到麦克风', status: s.error || `输入：音乐文件${trackName ? ` · ${trackName}` : ''}`, canPlay: true };
+  if (s.pending) return { button: '🎤 Opening microphone…', status: 'Allow the mic in the browser prompt', canPlay: false };
+  if (s.mode === 'mic') return { button: '♪ Back to music', status: `Input: microphone${s.label ? ` · ${s.label}` : ''}`, canPlay: false };
+  return { button: '🎤 Switch to microphone', status: s.error || `Input: music file${trackName ? ` · ${trackName}` : ''}`, canPlay: true };
 }

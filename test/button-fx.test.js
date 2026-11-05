@@ -42,7 +42,7 @@ test('d-pad left/right rotates hue while held and wraps', () => {
 
 test('B, missing pad, non-standard layout and bad dt clear everything', () => {
   let on = run(run(fxState(), pad()), pad(FX_BUTTONS.X, FX_BUTTONS.RIGHT, FX_BUTTONS.A), 30);
-  assert.ok(fxActive(on)); assert.match(fxLabel(on), /色彩分离/);
+  assert.ok(fxActive(on)); assert.match(fxLabel(on), /RGB split/);
   for (const [p, dt] of [[pad(FX_BUTTONS.B), 1 / 60], [null, 1 / 60], [{ ...pad(), standard: false }, 1 / 60], [pad(), 1]]) {
     const cleared = advanceButtonFx(on, p, dt);
     assert.equal(fxActive(cleared), false); assert.equal(cleared.toggles.shift, false); assert.equal(fxLabel(cleared), '');

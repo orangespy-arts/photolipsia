@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { skyFor, hexToRgb, SKY_PRESETS } from '../src/mapping/skyPresets.js';
 import { SCENES } from '../src/render/sceneCatalog.js';
 
-test('only 空城 (s02) and 云海遗迹 (s09) get a sky; others stay as scanned', () => {
+test('only the Empty City (s02) and Cloud Ruins (s09) get a sky; others stay as scanned', () => {
   const withSky = SCENES.filter((s) => skyFor(s)).map((s) => s.id);
   assert.deepEqual(withSky, ['s02', 's09']);
 });

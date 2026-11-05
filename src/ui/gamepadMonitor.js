@@ -8,7 +8,7 @@ let lastPaint = -Infinity;
 
 function clear(message) {
   el('status').textContent = message;
-  el('device').textContent = '当前没有可用输入';
+  el('device').textContent = 'No input available';
   el('mapped').hidden = true;
   el('buttons').replaceChildren();
   el('axes').textContent = '—';
@@ -18,11 +18,11 @@ function clear(message) {
 
 function render() {
   if (document.hidden || !document.hasFocus()) {
-    clear('检测已暂停，请回到此页面。');
+    clear('Detection paused — return to this page.');
     return;
   }
   if (!window.isSecureContext || typeof navigator.getGamepads !== 'function') {
-    clear('浏览器暂不支持检测。请使用 Chrome 或 Edge，通过 localhost 打开此页。');
+    clear('The browser cannot detect gamepads yet. Use Chrome or Edge and open this page via localhost.');
     return;
   }
   try {
@@ -30,12 +30,12 @@ function render() {
     const state = readGamepad(pad, Number(el('deadzone').value));
     if (!state) {
       preferredIndex = null;
-      clear('等待手柄：点击“开始检测”，再按手柄 A 键；已拔出的手柄可直接重新连接。');
+      clear('Waiting for gamepad: click "Start detection", then press A on the pad; unplugged pads can reconnect directly.');
       return;
     }
     preferredIndex = state.index;
-    el('status').textContent = state.standard ? '已连接 · 标准布局（按 Xbox 按键名称显示）' : '已连接 · 非标准布局，仅显示原始编号，需确认映射。';
-    el('device').textContent = `${state.id} · 插槽 ${state.index} · ${state.axes.length} 轴 / ${state.buttons.length} 按键`;
+    el('status').textContent = state.standard ? 'Connected · standard layout (shown with Xbox button names)' : 'Connected · non-standard layout, raw indices only — mapping needs checking.';
+    el('device').textContent = `${state.id} · slot ${state.index} · ${state.axes.length} axes / ${state.buttons.length} buttons`;
     el('mapped').hidden = !state.standard;
     const nextLayout = `${state.index}:${state.id}:${state.standard}:${state.buttons.length}`;
     if (layout !== nextLayout) {
@@ -52,7 +52,7 @@ function render() {
       keyNodes[i].textContent = `${label}\n${button.value.toFixed(2)}${button.pressed ? ' ●' : ''}`;
       keyNodes[i].classList.toggle('active', button.pressed || button.value > 0.05);
     });
-    el('axes').textContent = state.axes.map((axis, i) => `轴 ${i}: ${axis.toFixed(3)}`).join('    ') || '无轴';
+    el('axes').textContent = state.axes.map((axis, i) => `axis ${i}: ${axis.toFixed(3)}`).join('    ') || 'no axes';
     if (state.standard) {
       for (const side of ['left', 'right']) {
         const { x, y } = state[side];
@@ -65,7 +65,7 @@ function render() {
       });
     }
   } catch {
-    clear('浏览器阻止了手柄读取。请在独立的 Chrome / Edge 标签页中打开此 localhost 页面后重试。');
+    clear('The browser blocked gamepad reads. Open this localhost page in a separate Chrome / Edge tab and try again.');
   }
 }
 

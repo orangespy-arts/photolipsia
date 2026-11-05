@@ -270,7 +270,7 @@ if (config.journey) {
   controlsToggle.hidden = false;
   controlsToggle.addEventListener('click', () => {
     const collapsed = document.body.classList.toggle('controls-collapsed');
-    controlsToggle.textContent = collapsed ? '声音与生长设置' : '收起设置';
+    controlsToggle.textContent = collapsed ? 'Sound & growth settings' : 'Hide settings';
     controlsToggle.setAttribute('aria-expanded', String(!collapsed));
   });
 }
@@ -278,7 +278,7 @@ const { play, view } = config;
 const onLookStatus = (message) => {
   const hint = document.getElementById('look-status');
   hint.hidden = false;
-  hint.textContent = config.journey ? 'WASD / 方向键移动 · 右键拖动视角 · Esc 释放鼠标' : message;
+  hint.textContent = config.journey ? 'WASD / arrow keys move · right-drag to look · Esc releases the mouse' : message;
 };
 const stage = config.journey ? createJourney({ canvas, startId: url.get('scene'), onLookStatus }) : createSplatStage({
   canvas,

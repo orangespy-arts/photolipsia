@@ -35,13 +35,13 @@ export function createConsolePanel({ table, openButton, outputState, getPad, get
             const rate = (k) => (last && dt > 0 ? Math.round(((o[k] ?? 0) - (last[k] ?? 0)) / dt) : '…');
             let mine = '?';
             try { const c = document.getElementById('composite'); mine = [...c.getContext('2d').getImageData(c.width / 2 | 0, c.height / 2 | 0, 1, 1).data.slice(0, 3)].join(','); } catch {}
-            diag = ` · 推送 ${rate('pushes')}/s · 复制 ${rate('copies')}/s · 输出循环 ${rate('ticks')}/s · ${o.visible === 'visible' ? '可见' : '不可见'} · 中心像素 输出 ${o.pixel} / 预览 ${mine}${o.error ? ` · 错误 ${o.error}` : ''}`;
+            diag = ` · push ${rate('pushes')}/s · copy ${rate('copies')}/s · output loop ${rate('ticks')}/s · ${o.visible === 'visible' ? 'visible' : 'hidden'} · centre pixel output ${o.pixel} / preview ${mine}${o.error ? ` · error ${o.error}` : ''}`;
             last = { ...o, t: now };
           }
-        } catch (e) { diag = ` · 读取失败 ${e.message}`; }
+        } catch (e) { diag = ` · read failed ${e.message}`; }
       }
       if (!open) { last = null; diag = ''; }
-      const text = open ? `输出窗口：已打开${diag}` : '输出窗口：未打开';
+      const text = open ? `Output window: open${diag}` : 'Output window: closed';
       if (outputState.textContent !== text) outputState.textContent = text;
     },
   };

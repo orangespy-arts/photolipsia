@@ -2,6 +2,27 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-05 — 控制台界面换英文
+
+- 用户要求"把工作台的语言换成英文"，澄清为 VJ 控制台 UI。范围：VJ 页全部面板（index.html 入口/飞行/音乐/效果面板）、键位表 controlMap、场景名 sceneCatalog、十种预设名 EFFECT_NAMES、按键效果标签 FX_LABELS、转场标签、飞行状态行 flightController、场景切换状态行 sceneSwitcher、音乐面板 showAudio、麦克风归约器文案 inputMode、输出窗口 output.html/output.js、手柄检测页 gamepad.html/gamepadMonitor、webaudio 驱动面向用户的错误文案。旧探索模式（journey）与项目文档保持中文。
+- 译文要点：转场 dissolve→Freeze dissolve / particles→Particle scatter；预设 1–10 为 Echo/Ripple/Vortex/Tunnel/Scan glitch/Strobe/Posterize/Print/Split/Melt；场景名 Ruin Entrance…Rebirth Garden 十个；输出诊断 push/copy/output loop；音乐面板按钮 Start music / Pause music / Switch to microphone / Back to music / Pick music file；滑杆标签 ♪ Particle amplitude / ♪ Effect sync (sound-linked)。
+- 同步：docs/vj-controls.md 键位表加英文原名括注、预设/面板段落改引用英文按钮名；测试同步（input-mode、button-fx、control-map、vj-effects、sky-presets 中的中文断言改英文）。
+- 验证：npm test 220、npm run check 通过（report summary ok）；全部改动文件 node --check 通过。仅静态检查 + 单测，浏览器未看。未提交。
+
+## 2026-11-05 — START.md 重写为 VJ 演出指南
+
+- 用户要求"根据 log 重新更新这个文件"（IDE 打开着 START.md）。旧版主线还是玻璃球跑图（2026-10-28 视角），已与 log 里 2026-11-05 的方向脱节。
+- 重写为 VJ 演出指南：入口表换成首页实际 href（双屏控制台/单屏带音乐/自由飞行/手柄检测/探索传送门）；新增手柄键位、十种预设、音乐面板（进度条/切麦克风/选曲/↑↓ 幅度/←→ 效果律动）、转场下拉 + 卡重拍、双屏输出窗口（含 Zen 逐帧复制提示）、`&res=` 说明；场景资源改为 `3dscene\ruin1–10.ply` + 默认曲目 `audio\5songDJ.wav`，标注不随 git；旧玻璃球模式降为第 6 节保留（`?play=1` 参数）。
+- 核对来源：index.html 入口与面板文案、docs/vj-controls.md、sceneCatalog.js（s01–s10 + s02/s09 天空）、serve.mjs（/3dscene 路由、/audio/5songDJ.wav）、inputMode.js 按钮文案。
+- OSC 桥章节、换端口、排障表保留；排障表新增输出窗口不动、默认曲目无法播放、手柄没反应。
+- 仅文档变更，未跑 npm test（无代码改动）。未提交。
+
+## 2026-11-05 — 音乐进度条
+
+- `index.html` 时钟下加 range 进度条；`showAudio`：每帧同步 currentTime/duration（拖动中不覆盖）、input 时预览时间、change 时跳转并 blur；麦克风模式与时长未知时禁用。
+- 验证：npm test 220、check 通过；内置浏览器点击播放 2.5 秒后进度值 4/1000、时钟 00:02；设为 500 并触发 change → 06:01 / 11:59、进度 502，焦点已离开进度条。之后暂停了音乐。
+- 未提交。
+
 ## 2026-11-05 — Y 键：万花筒 → 霓虹描边
 
 - 用户选择"霓虹描边"替换万花筒。`buttonFx` 开关名 kaleid→edge、标签"霓虹描边"；`hydraStage` o1 层改为相邻像素差（scrollX 0.002 / scrollY 0.0035）去色、乘增益 ×7 并按时间在青↔品红间着色，叠加 0.22 亮度的底图，用 Y 的开关量混合；键位表、HUD 提示、docs、相关测试同步。

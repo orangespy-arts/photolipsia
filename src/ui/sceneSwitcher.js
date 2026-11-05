@@ -19,10 +19,10 @@ export function createSceneSwitcher({ stage, flight, startId, fade, label, still
   const scene = () => SCENES[switchState.index];
 
   function show() {
-    const s = scene(), n = `场景 ${switchState.index + 1}/${SCENES.length} · ${s.name}`;
-    const busy = { wait: '等待重拍…', out: '正在切换…', hold: '正在切换…', load: '正在加载…', in: '正在切换…' }[tr.phase];
-    label.textContent = stage.loadError ? `${n} · 加载失败：${stage.loadError}`
-      : initial ? `${n} · 正在加载…` : busy ? `${n} · ${busy}` : `${n} · Start 下一场`;
+    const s = scene(), n = `Scene ${switchState.index + 1}/${SCENES.length} · ${s.name}`;
+    const busy = { wait: 'waiting for beat…', out: 'switching…', hold: 'switching…', load: 'loading…', in: 'switching…' }[tr.phase];
+    label.textContent = stage.loadError ? `${n} · load failed: ${stage.loadError}`
+      : initial ? `${n} · loading…` : busy ? `${n} · ${busy}` : `${n} · Start for next scene`;
   }
 
   function swap() {

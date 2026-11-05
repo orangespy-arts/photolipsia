@@ -41,6 +41,7 @@
     [data-input-device] { font: inherit; font-size: 0.75rem; max-width: 100%; background: #1c1c24; color: #eee; }
     [data-input-device][hidden] { display: none; }
     .toggle:disabled { opacity: 0.45; cursor: default; }
+    [data-audio-seek] { display: block; width: 100%; margin: 0.3rem 0 0.1rem; accent-color: #d9c25b; }
     .audio-linked-title { color: #d9c25b; font-size: 0.8rem; margin-bottom: 0.1rem; }
     /* dual-screen console (?vj=1&console=1): preview + key map left, panels right.
        The WebGL canvases keep rendering off-view; #composite shows the result. */
@@ -116,69 +117,70 @@
 </head>
 <body>
   <canvas id="stage" aria-label="Interactive scene: click to lock the mouse, Esc to release"></canvas>
-  <canvas id="hydra-output" hidden aria-label="Hydra 效果画面"></canvas>
+  <canvas id="hydra-output" hidden aria-label="Hydra effect output"></canvas>
   <canvas id="transition-still" hidden aria-hidden="true"></canvas>
   <div id="scene-fade" aria-hidden="true"></div>
   <div id="console-left" hidden>
-    <canvas id="composite" aria-label="输出画面预览"></canvas>
-    <div class="btnrow"><button id="open-output" class="toggle" type="button">打开输出窗口</button>
-      <span id="output-state">输出窗口：未打开</span></div>
-    <table id="control-map" aria-label="手柄键位"></table>
+    <canvas id="composite" aria-label="Output preview"></canvas>
+    <div class="btnrow"><button id="open-output" class="toggle" type="button">Open output window</button>
+      <span id="output-state">Output window: closed</span></div>
+    <table id="control-map" aria-label="Gamepad key map"></table>
   </div>
   <div id="amp-hint" class="corner-hint" role="status"></div>
-  <div id="perform-hint" role="status">表演模式 · H 显示控制台 · F 全屏</div>
+  <div id="perform-hint" role="status">Performance mode · H console · F fullscreen</div>
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
-    <div class="btnrow" aria-label="场景入口">
-      <a id="start-explore" class="toggle scene-link" href="?journey=1">开始探索 · 粒子传送门</a>
-      <a class="toggle scene-link" href="/gamepad.html">手柄检测</a>
-      <a id="vj-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01">手柄 VJ · 自由飞行</a>
-      <a id="console-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show&amp;console=1">双屏演出 · 控制台</a>
-      <a id="show-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show">单屏演出 · 带音乐</a>
-      <a id="scene-home" class="toggle scene-link" href="/" hidden>返回首页</a>
+    <div class="btnrow" aria-label="Scene entry">
+      <a id="start-explore" class="toggle scene-link" href="?journey=1">Explore · Particle Portal</a>
+      <a class="toggle scene-link" href="/gamepad.html">Gamepad test</a>
+      <a id="vj-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01">Gamepad VJ · Free flight</a>
+      <a id="console-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show&amp;console=1">Dual-screen show · Console</a>
+      <a id="show-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show">Single-screen show · Music</a>
+      <a id="scene-home" class="toggle scene-link" href="/" hidden>Back to home</a>
     </div>
     <p id="status">loading…</p>
-    <section id="vj-controls" hidden aria-label="手柄飞行控制">
-      <p id="flight-status" role="status">等待手柄…</p>
+    <section id="vj-controls" hidden aria-label="Gamepad flight controls">
+      <p id="flight-status" role="status">Waiting for gamepad…</p>
       <p id="scene-switch-status" aria-live="polite" hidden></p>
-      <p id="transition-row" hidden><label for="transition-type">转场</label>
-        <select id="transition-type"><option value="dissolve">叠化（定格溶解）</option><option value="particles">粒子散聚</option></select>
-        <span class="hint">有声音时卡在下一个重拍</span></p>
-      <p>自由飞行 · 可穿越场景表面</p>
-      <label for="flight-speed">移动速度</label>
+      <p id="transition-row" hidden><label for="transition-type">Transition</label>
+        <select id="transition-type"><option value="dissolve">Freeze dissolve</option><option value="particles">Particle scatter</option></select>
+        <span class="hint">With sound: waits for the next beat</span></p>
+      <p>Free flight · you can fly through surfaces</p>
+      <label for="flight-speed">Speed</label>
       <input id="flight-speed" type="range" min="0.1" max="5" step="0.1" value="1.5">
       <output id="flight-speed-value">1.5</output>
-      <button id="flight-reset" class="toggle" type="button">回到入口镜头</button>
+      <button id="flight-reset" class="toggle" type="button">Back to entrance view</button>
       <div id="audio-controls" hidden>
-        <p><button class="toggle" type="button" data-input-toggle>🎤 切到麦克风</button>
-          <span data-input-status>输入：音乐文件</span>
-          <select data-input-device hidden aria-label="麦克风设备"></select></p>
-        <p><button class="toggle" type="button" data-audio-pick>选择音乐文件</button>
+        <p><button class="toggle" type="button" data-input-toggle>🎤 Switch to microphone</button>
+          <span data-input-status>Input: music file</span>
+          <select data-input-device hidden aria-label="Microphone device"></select></p>
+        <p><button class="toggle" type="button" data-audio-pick>Pick music file</button>
           <input type="file" hidden data-audio-file>
           <span data-audio-name></span></p>
-        <button class="toggle" type="button" data-audio-toggle>▶ 开始音乐</button>
+        <button class="toggle" type="button" data-audio-toggle>▶ Start music</button>
         <span data-audio-clock>--:-- / --:--</span>
-        <p class="audio-linked-title">♪ 随声音联动（音乐越响动得越多，0 = 不跟声音）</p>
-        <p><label for="audio-splat" title="粒子随音乐跳动的幅度">♪ 粒子幅度（随声音）</label>
+        <input type="range" min="0" max="1000" step="1" value="0" data-audio-seek aria-label="Music progress (drag to seek)">
+        <p class="audio-linked-title">♪ Sound-linked (louder music = more motion, 0 = off)</p>
+        <p><label for="audio-splat" title="How much particles jump with the music">♪ Particle amplitude (sound-linked)</label>
           <input id="audio-splat" type="range" min="0" max="3" step="0.01" value="1" data-audio-splat>
           <output data-audio-splat-value>1.00×</output></p>
-        <p><label for="audio-effect" title="Hydra 拖影/扭曲随音乐变化的强度">♪ 效果律动（随声音）</label>
+        <p><label for="audio-effect" title="How strongly Hydra feedback/distortion follows the music">♪ Effect sync (sound-linked)</label>
           <input id="audio-effect" type="range" min="0" max="1" step="0.05" value="0.5" data-audio-effect>
           <output data-audio-effect-value>0.50</output></p>
-        <p>空格 播放/暂停 · 键盘 ↑/↓ 粒子幅度（0–3×） · ←/→ 效果律动（0–1） · 切场景音乐不断<br>选的文件刷新页面后会回到默认曲目</p>
+        <p>Space play/pause · ↑/↓ particle amplitude (0–3×) · ←/→ effect sync (0–1) · scene changes keep the music playing<br>The picked file reverts to the default track after a reload</p>
       </div>
       <div id="effect-controls" hidden>
-        <label for="effect-preset">Hydra 效果</label>
+        <label for="effect-preset">Hydra effect</label>
         <select id="effect-preset"></select>
-        <p data-effect-status>正在加载 Hydra…</p>
-        <p>LT 拖影 · RT 扭曲 · LB/RB 换效果 · B 清晰复位<br>A 闪白 · X 色彩分离 · Y 霓虹描边 · Back 黑白 · ←/→ 色相 · L3 像素 · R3 冻结</p>
-        <button class="toggle" type="button" data-effect-preview aria-pressed="false">预览效果</button>
-        <button class="toggle" type="button" data-effect-reset>恢复清晰画面</button>
+        <p data-effect-status>Loading Hydra…</p>
+        <p>LT feedback · RT warp · LB/RB preset · B clear<br>A flash · X RGB split · Y neon edge · Back mono · ←/→ hue · L3 pixel · R3 freeze</p>
+        <button class="toggle" type="button" data-effect-preview aria-pressed="false">Preview effect</button>
+        <button class="toggle" type="button" data-effect-reset>Restore clear picture</button>
       </div>
     </section>
     <p id="journey-status" hidden aria-live="polite"></p>
     <button id="portal-open" class="toggle" type="button" hidden>开启传送门</button>
-    <button id="controls-toggle" class="toggle" type="button" hidden aria-expanded="false">声音与生长设置</button>
+    <button id="controls-toggle" class="toggle" type="button" hidden aria-expanded="false">Sound & growth settings</button>
     <p id="look-status" hidden style="margin:0.25rem 0;font-size:0.8rem;color:#e8e6e3"></p>
     <div class="btnrow" id="tools-row">
       <button id="beat-toggle" class="toggle" hidden type="button">beat: —</button>

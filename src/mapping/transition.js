@@ -6,7 +6,7 @@
 //        'particles' — splats start flying apart; that half-scattered frame is
 //                      frozen over the load, then the new scene gathers in
 //                      while the frozen cloud dissolves (never an empty screen).
-export const TRANSITION_TYPES = { dissolve: '叠化', particles: '粒子散聚' };
+export const TRANSITION_TYPES = { dissolve: 'dissolve', particles: 'particles' };
 export const BEAT_GATE = 0.6;      // onset that counts as "the next hit"
 export const WAIT_MAX = 1.0;       // never wait longer than this for a beat
 export const OUT_SECONDS = { dissolve: 0, particles: 0.9 };

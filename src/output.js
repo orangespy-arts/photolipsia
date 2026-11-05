@@ -63,7 +63,7 @@ function streamConnect() {
 
 if (via === 'copy') { video.hidden = true; requestAnimationFrame(copyLoop); }
 else { canvas.hidden = true; streamConnect(); setInterval(streamConnect, 1000); }
-if (!window.opener) note.innerHTML = '请从控制台的"打开输出窗口"按钮打开本页';
+if (!window.opener) note.innerHTML = 'Please open this page from the console\'s "Open output window" button';
 
 const toggleFullscreen = () => {
   if (document.fullscreenElement) document.exitFullscreen();
@@ -85,8 +85,8 @@ setInterval(() => {
   debug.hidden = !debugOn;
   if (debugOn) {
     let consoleFrame = '—';
-    try { consoleFrame = String(window.opener?.__photolipsiaOutput?.frame ?? '无'); } catch (e) { consoleFrame = `错误 ${e.message}`; }
-    debug.textContent = `via=${via} 循环 ${((stats.ticks - prev.ticks) / dt).toFixed(0)}/s · 推送 ${((stats.pushes - prev.pushes) / dt).toFixed(0)}/s · 复制 ${((stats.copies - prev.copies) / dt).toFixed(0)}/s · 控制台帧 ${consoleFrame} · 输出帧 ${lastFrame}${stats.error ? ` · 错误 ${stats.error}` : ''}`;
+    try { consoleFrame = String(window.opener?.__photolipsiaOutput?.frame ?? 'none'); } catch (e) { consoleFrame = `error ${e.message}`; }
+    debug.textContent = `via=${via} loop ${((stats.ticks - prev.ticks) / dt).toFixed(0)}/s · push ${((stats.pushes - prev.pushes) / dt).toFixed(0)}/s · copy ${((stats.copies - prev.copies) / dt).toFixed(0)}/s · console frame ${consoleFrame} · output frame ${lastFrame}${stats.error ? ` · error ${stats.error}` : ''}`;
   }
   prev = { ticks: stats.ticks, copies: stats.copies, pushes: stats.pushes, t };
 }, 1000);

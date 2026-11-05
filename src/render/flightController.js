@@ -15,7 +15,7 @@ export function createFlightController({ camera, isReady, onStatus = () => {}, o
     camera.position.set(...state.position);
     camera.rotation.set(state.pitch, state.yaw, 0, 'YXZ');
   }
-  function suspend() { stop(); status('已暂停 · 回到页面并松开摇杆后继续'); }
+  function suspend() { stop(); status('Paused · return to the page and release the sticks to resume'); }
   function visibility() { if (doc.hidden) suspend(); }
   function disconnect(event) { if (event.gamepad?.index === device?.index) { device = null; suspend(); } }
   target.addEventListener('blur', suspend);
@@ -25,26 +25,26 @@ export function createFlightController({ camera, isReady, onStatus = () => {}, o
     update(dt) {
       if (disposed) return;
       if (doc.hidden || !doc.hasFocus()) { suspend(); return; }
-      if (!isReady()) { stop(); status('正在加载场景…'); return; }
+      if (!isReady()) { stop(); status('Loading scene…'); return; }
       let pad;
       try { pad = selectGamepad(getPads(), device?.index); }
-      catch { stop(); status('无法读取手柄，请用 Chrome / Edge 打开页面'); return; }
-      if (!pad) { device = null; stop(); status('点击页面，再按手柄 A 键连接'); return; }
+      catch { stop(); status('Cannot read the gamepad — open the page in Chrome / Edge'); return; }
+      if (!pad) { device = null; stop(); status('Click the page, then press gamepad A to connect'); return; }
       if (pad.index !== device?.index || pad.id !== device?.id) { stop(); device = { index: pad.index, id: pad.id }; }
       const snapshot = readGamepad(pad);
       const input = flightInput(snapshot);
-      if (!input) { stop(); status('手柄不是标准布局，请先在检测页确认映射'); return; }
-      if (!Number.isFinite(dt) || dt <= 0 || dt > 0.25) { stop(); status('已暂停 · 松开摇杆后继续'); return; }
+      if (!input) { stop(); status('Gamepad is not standard layout — check the test page for its mapping'); return; }
+      if (!Number.isFinite(dt) || dt <= 0 || dt > 0.25) { stop(); status('Paused · release the sticks to resume'); return; }
       if (!armed) {
-        if (!neutralFlightInput(input)) { status('请松开双摇杆和十字键，准备飞行'); return; }
+        if (!neutralFlightInput(input)) { status('Release both sticks and the D-pad to arm flight'); return; }
         armed = true;
       }
-      status('手柄已就绪 · 左摇杆移动 / 右摇杆视角 / 十字键 ↑↓ 升降');
+      status('Gamepad ready · left stick move / right stick look / D-pad ↑↓ up-down');
       onInput(snapshot);
       state = advanceFlight(state, input, dt, speed);
       apply();
     },
-    reset() { state = { ...home, position: [...home.position] }; stop(); apply(); status('已回到入口 · 松开摇杆后继续'); },
+    reset() { state = { ...home, position: [...home.position] }; stop(); apply(); status('Back at the entrance · release the sticks to resume'); },
     // New scene entrance: aim the camera, make it the reset target, stop and
     // require sticks to return to neutral before flying again.
     setHome(view) {

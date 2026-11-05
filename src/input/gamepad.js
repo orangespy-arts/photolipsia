@@ -1,6 +1,6 @@
 // Standard layout: https://www.w3.org/TR/gamepad/#remapping
 export const BUTTON_NAMES = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT',
-  'Back', 'Start', '左摇杆按下', '右摇杆按下', '↑', '↓', '←', '→', 'Home'];
+  'Back', 'Start', 'L3 stick', 'R3 stick', '↑', '↓', '←', '→', 'Home'];
 
 export function clampInput(value, min = -1, max = 1) {
   return Number.isFinite(value) ? Math.max(min, Math.min(max, value)) : 0;

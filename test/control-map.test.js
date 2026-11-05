@@ -17,8 +17,8 @@ test('rows light up for held buttons, deflected sticks, triggers and active togg
   const fx = { toggles: { edge: true } };
   const on = activeRows(pad, fx);
   const at = (input) => on[CONTROL_MAP.findIndex((r) => r.input === input)];
-  assert.equal(at('左摇杆'), true); assert.equal(at('右摇杆'), false);
+  assert.equal(at('Left stick'), true); assert.equal(at('Right stick'), false);
   assert.equal(at('Start'), true); assert.equal(at('RT'), true);
-  assert.equal(at('Y（开/关）'), true); assert.equal(at('X（开/关）'), false);
+  assert.equal(at('Y (on/off)'), true); assert.equal(at('X (on/off)'), false);
   assert.deepEqual(activeRows(null, null), CONTROL_MAP.map(() => false));
 });

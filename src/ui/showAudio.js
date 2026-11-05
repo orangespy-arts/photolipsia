@@ -8,6 +8,7 @@ import { reduceInput, inputState, inputLabels } from '../mapping/inputMode.js';
 export function createShowAudioControls({ driver, panel, hint = null, defaultName = '', doc = document }) {
   const button = panel.querySelector('[data-audio-toggle]');
   const clock = panel.querySelector('[data-audio-clock]');
+  const seek = panel.querySelector('[data-audio-seek]');
   const splat = panel.querySelector('[data-audio-splat]');
   const effect = panel.querySelector('[data-audio-effect]');
   const splatValue = panel.querySelector('[data-audio-splat-value]');
@@ -28,10 +29,10 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
 
   async function loadFile(file) {
     if (!file) return;
-    if (!isLikelyAudio(file)) { error = `不是音频文件：${displayName(file.name)}`; return; }
+    if (!isLikelyAudio(file)) { error = `Not an audio file: ${displayName(file.name)}`; return; }
     const url = URL.createObjectURL(file);
     const previous = track;
-    busy = true; error = ''; nameLabel.textContent = `载入中… ${displayName(file.name)}`;
+    busy = true; error = ''; nameLabel.textContent = `Loading… ${displayName(file.name)}`;
     try {
       await driver.loadSource(url);
       track = { src: url, name: file.name, blob: true };
@@ -48,8 +49,8 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
     }
   }
   // ── live microphone (W3i) ──
-  const micError = (err) => (err?.name === 'NotAllowedError' ? '麦克风权限被拒绝'
-    : err?.name === 'NotFoundError' ? '没有找到麦克风' : `无法使用麦克风：${err?.message ?? err}`);
+  const micError = (err) => (err?.name === 'NotAllowedError' ? 'Microphone permission denied'
+    : err?.name === 'NotFoundError' ? 'No microphone found' : `Could not use the microphone: ${err?.message ?? err}`);
   async function openMic(deviceId = '') {
     try {
       const { label, deviceId: used } = await driver.useMic(deviceId, () => dispatch({ type: 'mic-ended' }));
@@ -73,6 +74,17 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
     openMic(deviceSelect.value);
   });
 
+  // progress bar: follows playback; dragging previews the time, releasing
+  // jumps there (and hands the arrow keys back to amplitude / effect sync)
+  let seeking = false;
+  const seekTime = () => (Number(seek.value) / 1000) * (driver.media?.duration || 0);
+  seek.addEventListener('input', () => { seeking = true; });
+  seek.addEventListener('change', () => {
+    const media = driver.media;
+    if (media && Number.isFinite(media.duration)) media.currentTime = seekTime();
+    seeking = false; seek.blur();
+  });
+
   pick.addEventListener('click', () => { pick.blur(); fileInput.click(); });
   fileInput.addEventListener('change', () => { loadFile(fileInput.files?.[0]); fileInput.value = ''; });
 
@@ -83,7 +95,7 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
     try {
       if (media.paused) await driver.play(); else driver.pause();
       error = '';
-    } catch (err) { error = `播放失败：${err.message}`; }
+    } catch (err) { error = `Playback failed: ${err.message}`; }
   }
   const showHint = (text) => {
     if (!hint) return;
@@ -102,10 +114,10 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
     event.preventDefault();
     if (vertical) {
       splat.value = String(stepAmplitude(Number(splat.value), vertical));
-      paintSliders(); showHint(`♪ 粒子幅度（随声音） ${Number(splat.value).toFixed(2)}×`);
+      paintSliders(); showHint(`♪ Particle amplitude (sound-linked) ${Number(splat.value).toFixed(2)}×`);
     } else {
       effect.value = String(stepEffectSync(Number(effect.value), horizontal));
-      paintSliders(); showHint(`♪ 效果律动（随声音） ${Number(effect.value).toFixed(2)}`);
+      paintSliders(); showHint(`♪ Effect sync (sound-linked) ${Number(effect.value).toFixed(2)}`);
     }
   };
   const paintSliders = () => {
@@ -130,9 +142,14 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
       if (inputStatus.textContent !== io.status) inputStatus.textContent = io.status;
       inputButton.disabled = input.pending;
       button.disabled = !io.canPlay;
-      const label = playing ? '❚❚ 暂停音乐' : media?.ended ? '↺ 重新播放' : media?.currentTime > 0 ? '▶ 继续音乐' : '▶ 开始音乐';
+      const label = playing ? '❚❚ Pause music' : media?.ended ? '↺ Replay' : media?.currentTime > 0 ? '▶ Resume music' : '▶ Start music';
       if (button.textContent !== label) button.textContent = label;
-      const text = error || `${formatClock(media?.currentTime)} / ${formatClock(media?.duration)}`;
+      const duration = media?.duration;
+      const known = Number.isFinite(duration) && duration > 0;
+      seek.disabled = !known || !io.canPlay;
+      if (!seeking) seek.value = String(known ? Math.round((media.currentTime / duration) * 1000) : 0);
+      const shown = seeking ? seekTime() : media?.currentTime;
+      const text = error || `${formatClock(shown)} / ${formatClock(duration)}`;
       if (clock.textContent !== text) clock.textContent = text;
     },
     get inputMode() { return input.mode; },

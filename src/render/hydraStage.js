@@ -5,14 +5,14 @@ export function loadHydra(doc = document) {
   if (typeof window.Hydra === 'function') return Promise.resolve(window.Hydra);
   return new Promise((resolve, reject) => {
     const script = doc.createElement('script');
-    const timer = setTimeout(() => { script.remove(); reject(new Error('Hydra 加载超时')); }, 15000);
+    const timer = setTimeout(() => { script.remove(); reject(new Error('Hydra load timed out')); }, 15000);
     script.src = '/node_modules/hydra-synth/dist/hydra-synth.js';
     script.onload = () => {
       clearTimeout(timer);
       if (typeof window.Hydra === 'function') resolve(window.Hydra);
-      else reject(new Error('Hydra 未能初始化'));
+      else reject(new Error('Hydra failed to initialise'));
     };
-    script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error('Hydra 文件加载失败')); };
+    script.onerror = () => { clearTimeout(timer); script.remove(); reject(new Error('Hydra file failed to load')); };
     doc.head.appendChild(script);
   });
 }
@@ -121,7 +121,7 @@ export function createHydraStage({ Hydra, source, output }) {
       completed = false;
       hydra.tick(Math.min(100, Math.max(1, dt * 1000)));
       // Hydra catches tick errors internally; afterUpdate confirms a complete draw.
-      if (!completed) throw new Error('Hydra 未完成画面渲染');
+      if (!completed) throw new Error('Hydra did not finish a frame');
       output.hidden = state.feedback === 0 && state.distortion === 0 && !fxActive(fx);
     },
     dispose,

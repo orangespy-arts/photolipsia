@@ -4,7 +4,7 @@ export const FX_BUTTONS = { A: 0, B: 1, X: 2, Y: 3, BACK: 8, L3: 10, R3: 11, LEF
 const TOGGLES = { shift: FX_BUTTONS.X, edge: FX_BUTTONS.Y, mono: FX_BUTTONS.BACK, pixel: FX_BUTTONS.L3 };
 const HOLDS = { invert: FX_BUTTONS.A, freeze: FX_BUTTONS.R3 };
 export const HUE_RATE = 0.2; // turns per second while ← / → is held
-export const FX_LABELS = { invert: '闪白', shift: '色彩分离', edge: '霓虹描边', mono: '黑白', pixel: '像素化', freeze: '冻结' };
+export const FX_LABELS = { invert: 'flash', shift: 'RGB split', edge: 'neon edge', mono: 'mono', pixel: 'pixel', freeze: 'freeze' };
 
 const zeroLevels = () => ({ invert: 0, shift: 0, edge: 0, mono: 0, pixel: 0, freeze: 0 });
 export const fxState = () => ({ armed: false, prev: [], toggles: { shift: false, edge: false, mono: false, pixel: false },
@@ -38,6 +38,6 @@ export const fxActive = (fx) => !!fx && (fx.hue !== 0 || Object.values(fx.levels
 export function fxLabel(fx) {
   if (!fxActive(fx)) return '';
   const parts = Object.entries(fx.levels).filter(([, v]) => v > 0.05).map(([n]) => FX_LABELS[n]);
-  if (fx.hue !== 0) parts.push(`色相 ${Math.round(fx.hue * 360)}°`);
+  if (fx.hue !== 0) parts.push(`hue ${Math.round(fx.hue * 360)}°`);
   return parts.join(' · ');
 }

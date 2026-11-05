@@ -3,8 +3,8 @@
 // Ten-scene show (2026-11-05): ruin1–10.ply in /3dscene. Explorer values are
 // shared placeholders until each scene's entrance is calibrated (W6b).
 const NAMES = [
-  '废墟入口', '空城', '地下通道', '机器大厅', '水下中庭',
-  '菌丝温室', '晶体裂谷', '异变圣殿', '云海遗迹', '重生庭院',
+  'Ruin Entrance', 'Empty City', 'Underground Pass', 'Machine Hall', 'Underwater Atrium',
+  'Mycelium Greenhouse', 'Crystal Rift', 'Mutated Temple', 'Cloud Ruins', 'Rebirth Garden',
 ];
 
 const placeholderExplorer = () => ({

@@ -15,23 +15,23 @@ export function createVjEffects({ source, output, panel }) {
   select.replaceChildren(...EFFECT_NAMES.map((name, i) => new Option(`${i + 1}. ${name}`, String(i))));
   const reset = () => {
     state = effectState(state.preset); input = null; preview = false; fx = fxState();
-    previewButton.textContent = '预览效果'; previewButton.setAttribute('aria-pressed', 'false');
+    previewButton.textContent = 'Preview effect'; previewButton.setAttribute('aria-pressed', 'false');
     output.hidden = true;
   };
   function fail(error) {
     failed = true; reset(); renderer?.dispose(); renderer = null;
-    status.textContent = `${error.message} · 已恢复原画，请刷新重试`;
+    status.textContent = `${error.message} · restored the original picture — reload to retry`;
     for (const element of [select, previewButton, resetButton]) element.disabled = true;
   }
   const onPreset = () => { reset(); state = effectState(Number(select.value)); };
   const onPreview = () => {
     preview = !preview;
     state = { ...effectState(state.preset), armed: true };
-    previewButton.textContent = preview ? '结束预览' : '预览效果';
+    previewButton.textContent = preview ? 'End preview' : 'Preview effect';
     previewButton.setAttribute('aria-pressed', String(preview));
   };
   const onVisibility = () => { if (document.hidden) reset(); };
-  const onContextLost = event => { event.preventDefault(); fail(new Error('Hydra 图形上下文已丢失')); };
+  const onContextLost = event => { event.preventDefault(); fail(new Error('Hydra graphics context lost')); };
   select.addEventListener('change', onPreset);
   previewButton.addEventListener('click', onPreview);
   resetButton.addEventListener('click', reset);
@@ -58,7 +58,7 @@ export function createVjEffects({ source, output, panel }) {
     },
     render(dt, ready) {
       if (disposed || failed) return;
-      if (!renderer || !ready) { status.textContent = '正在准备 Hydra 与场景…'; lastLabel = ''; return; }
+      if (!renderer || !ready) { status.textContent = 'Preparing Hydra and scene…'; lastLabel = ''; return; }
       let activeInput = input;
       if (preview && document.hasFocus() && !document.hidden) activeInput = { standard: true, triggers: [0.65, 0.65], buttons: [] };
       state = advanceEffects(state, activeInput, dt);
@@ -66,7 +66,7 @@ export function createVjEffects({ source, output, panel }) {
       const display = combineEffectDrive(state, audio, bHeld);
       try { renderer.render(display, dt, fx); } catch (error) { fail(error); return; }
       select.value = String(state.preset);
-      const label = `${state.preset + 1}/${EFFECT_NAMES.length} ${EFFECT_NAMES[state.preset]} · 拖影 ${Math.round(display.feedback * 100)}% / 扭曲 ${Math.round(display.distortion * 100)}%${fxLabel(fx) ? ` · ${fxLabel(fx)}` : ''}${state.armed ? '' : ' · 松开扳机与肩键准备'}`;
+      const label = `${state.preset + 1}/${EFFECT_NAMES.length} ${EFFECT_NAMES[state.preset]} · trails ${Math.round(display.feedback * 100)}% / warp ${Math.round(display.distortion * 100)}%${fxLabel(fx) ? ` · ${fxLabel(fx)}` : ''}${state.armed ? '' : ' · release triggers and shoulders to arm'}`;
       if (label !== lastLabel) { status.textContent = label; lastLabel = label; }
     },
     dispose() {
