@@ -10,15 +10,18 @@ import { parseTf } from './framing.js';
  * The AVParams → visual math lives in mapping (pure, tested); this file is
  * the only place that touches three.js/Spark.
  */
-export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, staticEnvironment = false, interactive = true, splatBudget }) {
+export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = false, staticEnvironment = false, interactive = true, splatBudget, renderSize = null }) {
+  // renderSize ({width, height}) pins the drawing buffer (dual-screen console);
+  // otherwise it follows the canvas's CSS size.
+  const size = () => (renderSize ? [renderSize.width, renderSize.height] : [canvas.clientWidth, canvas.clientHeight]);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+  renderer.setSize(...size(), false);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0b0b10);
 
   const camera = new THREE.PerspectiveCamera(
-    60, canvas.clientWidth / canvas.clientHeight, 0.01, 100,
+    60, size()[0] / size()[1], 0.01, 100,
   );
   camera.position.set(0, 0.4, 4.5);
   camera.lookAt(0, 0, 0);
@@ -182,7 +185,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   }
 
   function resize() {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const [w, h] = size();
     if (canvas.width !== w || canvas.height !== h) {
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
@@ -190,6 +193,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     }
   }
 
+  let ampSettled = null; // mesh already regenerated at amplitude 0
   let hueApplied = 0; // stored only in Stage 1; per-splat hue lands in Stage 2 dyno
 
   /**
@@ -208,6 +212,11 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     av.uniforms.uOnset.value = params.onset;
     av.uniforms.uCentroid.value = params.centroid;
     av.uniforms.uTime.value = params.time;
+    // Spark only re-runs the splat generator (and so the dyno modifier) when
+    // the mesh version changes; uniform edits alone do not trigger it.
+    // At amplitude 0 the modifier is an identity, so skip the regeneration
+    // cost once the mesh has been regenerated at 0 a single time.
+    if (av.uniforms.uAmp.value > 0 || ampSettled !== splat) { splat.updateVersion(); ampSettled = av.uniforms.uAmp.value > 0 ? null : splat; }
 
     // gentle whole-object scale remains (Stage 1 behavior, now secondary
     // to the per-splat region response); multiplies the ?tf= base scale.
@@ -229,6 +238,11 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
 
   return {
     updateParams, render, swapSplat,
+    // music-motion amplitude for the splat displacement (no-op when static)
+    setAmplitude(value) {
+      if (!av || av.uniforms.uAmp.value === value) return;
+      av.uniforms.uAmp.value = value; ampSettled = null;
+    },
     dispose() { disposed = true; splat.dispose(); sparkRenderer.dispose(); renderer.dispose(); },
     get ready() { return ready; },
     get loadError() { return loadError; },

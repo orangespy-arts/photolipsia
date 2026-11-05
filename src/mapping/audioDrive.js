@@ -7,13 +7,6 @@ const clamp01 = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0);
 export const AUDIO_FEEDBACK_MAX = 0.6;
 export const AUDIO_DISTORTION_MAX = 0.8;
 
-// Splat reactivity: scale the fields the shake modifier reads. amount 0 = still.
-export function scaleReactivity(params, amount) {
-  const k = clamp01(amount);
-  return { ...params, onset: clamp01(params.onset) * k, rms: clamp01(params.rms) * k,
-    bands: { low: clamp01(params.bands?.low) * k, mid: clamp01(params.bands?.mid) * k, high: clamp01(params.bands?.high) * k } };
-}
-
 // rms lifts the trail base, onset fires a distortion pulse.
 export function audioEffectDrive(params, amount) {
   const k = clamp01(amount);

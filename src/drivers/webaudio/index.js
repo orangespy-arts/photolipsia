@@ -134,6 +134,21 @@ export function createWebAudioDriver({ source = 'mic', file = null, url = null, 
     // transport for the url source; must be called from a user gesture
     async play() { await audioCtx?.resume(); await mediaEl?.play(); },
     pause() { mediaEl?.pause(); },
+    // swap the track on the same <audio> element: the analyser chain stays
+    // connected. Resolves once metadata (duration) is known; rejects when the
+    // browser cannot play the source.
+    loadSource(src) {
+      if (!mediaEl) return Promise.reject(new Error('no media element'));
+      mediaEl.pause();
+      return new Promise((resolve, reject) => {
+        const done = (ok) => () => { mediaEl.removeEventListener('loadedmetadata', onOk); mediaEl.removeEventListener('error', onErr); ok ? resolve(mediaEl.duration) : reject(new Error('无法播放该文件')); };
+        const onOk = done(true), onErr = done(false);
+        mediaEl.addEventListener('loadedmetadata', onOk);
+        mediaEl.addEventListener('error', onErr);
+        mediaEl.src = src;
+        mediaEl.load();
+      });
+    },
     get media() { return mediaEl; },
     start,
     stop,

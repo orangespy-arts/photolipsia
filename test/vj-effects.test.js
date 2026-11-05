@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { advanceEffects, effectState } from '../src/mapping/vjEffects.js';
+import { advanceEffects, effectState, EFFECT_NAMES } from '../src/mapping/vjEffects.js';
 
 const pad = (lt = 0, rt = 0, pressed = []) => ({ standard: true, triggers: [lt, rt],
   buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: pressed.includes(i) })) });
@@ -20,7 +20,7 @@ test('shoulders switch on edges once, wrap around and cancel simultaneous presse
   assert.equal(state.preset, 1); assert.equal(state.reset, true);
   state = advanceEffects(state, pad(0, 0, [5]), 0.1);
   assert.equal(state.preset, 1); assert.equal(state.reset, false);
-  assert.equal(advanceEffects(armed(), pad(0, 0, [4]), 0.1).preset, 2);
+  assert.equal(advanceEffects(armed(), pad(0, 0, [4]), 0.1).preset, EFFECT_NAMES.length - 1);
   assert.equal(advanceEffects(armed(), pad(0, 0, [4, 5]), 0.1).preset, 0);
 });
 test('B and lost input clear immediately and require release before rearming', () => {
@@ -43,4 +43,17 @@ test('release smoothing is frame-rate independent and eventually becomes exact z
   let state = advanceEffects(armed(), pad(1, 1), 0.1);
   for (let i = 0; i < 180; i++) state = advanceEffects(state, pad(), 1 / 60);
   assert.equal(state.feedback, 0); assert.equal(state.distortion, 0);
+});
+
+test('ten distinct presets; RB walks all of them one press at a time and wraps', () => {
+  assert.equal(EFFECT_NAMES.length, 10);
+  assert.equal(new Set(EFFECT_NAMES).size, 10);
+  assert.ok(!EFFECT_NAMES.includes('镜像'), 'kaleid lives on Y, not in presets');
+  let state = armed(); const seen = [state.preset];
+  for (let i = 0; i < 10; i++) {
+    state = advanceEffects(state, pad(0, 0, [5]), 0.1);
+    state = advanceEffects(state, pad(), 0.1);
+    seen.push(state.preset);
+  }
+  assert.deepEqual(seen, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
 });

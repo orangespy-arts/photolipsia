@@ -11,6 +11,8 @@ export function createVjEffects({ source, output, panel }) {
   let state = effectState(), input = null, renderer = null, disposed = false, failed = false;
   let preview = false, wasActive = false, lastLabel = '', audio = null, bHeld = false, fx = fxState(), fxInput = null;
   panel.hidden = false;
+  // options come from EFFECT_NAMES so the list never drifts from the presets
+  select.replaceChildren(...EFFECT_NAMES.map((name, i) => new Option(`${i + 1}. ${name}`, String(i))));
   const reset = () => {
     state = effectState(state.preset); input = null; preview = false; fx = fxState();
     previewButton.textContent = '预览效果'; previewButton.setAttribute('aria-pressed', 'false');
@@ -44,6 +46,7 @@ export function createVjEffects({ source, output, panel }) {
   return {
     // music drive from audioEffectDrive(); null = no show track
     setAudio(drive) { audio = drive; },
+    get fx() { return fx; },
     setInput(pad) {
       // read before reset(): reset clears input, but B must keep muting music
       bHeld = !!pad?.buttons[1]?.pressed;
@@ -63,7 +66,7 @@ export function createVjEffects({ source, output, panel }) {
       const display = combineEffectDrive(state, audio, bHeld);
       try { renderer.render(display, dt, fx); } catch (error) { fail(error); return; }
       select.value = String(state.preset);
-      const label = `${EFFECT_NAMES[state.preset]} · 拖影 ${Math.round(display.feedback * 100)}% / 扭曲 ${Math.round(display.distortion * 100)}%${fxLabel(fx) ? ` · ${fxLabel(fx)}` : ''}${state.armed ? '' : ' · 松开扳机与肩键准备'}`;
+      const label = `${state.preset + 1}/${EFFECT_NAMES.length} ${EFFECT_NAMES[state.preset]} · 拖影 ${Math.round(display.feedback * 100)}% / 扭曲 ${Math.round(display.distortion * 100)}%${fxLabel(fx) ? ` · ${fxLabel(fx)}` : ''}${state.armed ? '' : ' · 松开扳机与肩键准备'}`;
       if (label !== lastLabel) { status.textContent = label; lastLabel = label; }
     },
     dispose() {

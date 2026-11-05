@@ -1,19 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scaleReactivity, audioEffectDrive, combineEffectDrive, formatClock,
+import { audioEffectDrive, combineEffectDrive, formatClock,
   AUDIO_FEEDBACK_MAX, AUDIO_DISTORTION_MAX } from '../src/mapping/audioDrive.js';
 
 const loud = { rms: 1, onset: 1, bands: { low: 1, mid: 0.5, high: 0.25 }, time: 3 };
-
-test('reactivity scales bands/onset/rms, 0 is fully still, garbage clamps', () => {
-  const half = scaleReactivity(loud, 0.5);
-  assert.deepEqual(half.bands, { low: 0.5, mid: 0.25, high: 0.125 });
-  assert.equal(half.onset, 0.5); assert.equal(half.time, 3);
-  const still = scaleReactivity(loud, 0);
-  assert.deepEqual([still.onset, still.rms, still.bands.low, still.bands.mid, still.bands.high], [0, 0, 0, 0, 0]);
-  assert.equal(scaleReactivity({ ...loud, onset: NaN }, 2).onset, 0);
-  assert.equal(scaleReactivity(loud, 7).bands.low, 1);
-});
 
 test('music drive: rms → capped feedback, onset → capped distortion', () => {
   assert.deepEqual(audioEffectDrive(loud, 1), { feedback: AUDIO_FEEDBACK_MAX, distortion: AUDIO_DISTORTION_MAX });

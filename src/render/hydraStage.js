@@ -34,10 +34,37 @@ export function createHydraStage({ Hydra, source, output }) {
   function build(index) {
     const raw = () => h.src(h.s0);
     const amount = () => values.distortion;
-    let live;
-    if (index === 1) live = raw().modulate(h.osc(12, 0.08, 0).rotate(0.6), () => amount() * 0.085);
-    else if (index === 2) live = raw().blend(raw().kaleid(4), amount);
-    else live = raw().modulate(h.noise(3, 0.12), () => amount() * 0.055);
+    const strobe = () => {
+      const k = amount(), rate = 4 + k * 10;
+      return 1 - k * Number((performance.now() / 1000 * rate) % 1 < 0.5);
+    };
+    const tiles = () => (amount() < 0.34 ? 2 : amount() < 0.67 ? 3 : 4);
+    // Each preset is RT-driven (amount 0 = untouched source). Order matches
+    // EFFECT_NAMES in mapping/vjEffects.js.
+    const presets = [
+      // 回声: soft noise warp
+      () => raw().modulate(h.noise(3, 0.12), () => amount() * 0.055),
+      // 波纹: diagonal wave ripple
+      () => raw().modulate(h.osc(12, 0.08, 0).rotate(0.6), () => amount() * 0.085),
+      // 漩涡: rotation grows toward the centre (radial gradient as rotation map)
+      () => raw().modulateRotate(h.shape(64, 0, 1.5), () => amount() * 5),
+      // 隧道: radial rings drive zoom — concentric pull toward the middle
+      () => raw().modulateScale(h.osc(18, -0.25, 0).kaleid(200), () => amount() * 0.9, 1),
+      // 扫描故障: horizontal bands, gated by noise, shove rows sideways
+      () => raw().modulateScrollX(h.osc(40, 0.8, 0).rotate(Math.PI / 2).thresh(0.5)
+        .mult(h.noise(4, 1.2).thresh(0)), () => amount() * 0.4, 0),
+      // 频闪: square-wave black-out, faster and deeper as RT rises
+      () => raw().color(strobe, strobe, strobe),
+      // 色阶: posterized bands, fewer levels as RT rises
+      () => raw().blend(raw().posterize(() => 10 - amount() * 7, 0.6), amount),
+      // 版画: hard luma threshold, the bar rising with RT
+      () => raw().blend(raw().thresh(() => 0.18 + amount() * 0.22, 0.03), () => Math.min(1, amount() * 3)),
+      // 分屏: 2×2 → 3×3 → 4×4 tiling
+      () => raw().blend(raw().repeat(tiles, tiles), () => Math.min(1, amount() / 0.15)),
+      // 液化: the last output displaces the source — melting water surface
+      () => raw().modulate(h.src(h.o0).scale(1.01), () => amount() * 0.12),
+    ];
+    const live = (presets[index] ?? presets[0])();
     // freeze (R3) pins o0 to its previous frame: blend amount → 1
     live.blend(h.src(h.o0).scale(() => 1 + values.feedback * 0.012)
       .rotate(() => values.feedback * 0.002), () => Math.max(values.feedback * 0.92, fx.levels.freeze)).out(h.o0);

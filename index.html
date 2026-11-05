@@ -31,6 +31,25 @@
     #perform-hint { position: fixed; right: 1rem; bottom: 1rem; z-index: 11; padding: 0.4rem 0.7rem; border-radius: 6px;
       background: #000a; color: #ccc; font-size: 0.8rem; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; }
     #perform-hint.on { opacity: 1; transition: none; }
+    #amp-hint { position: fixed; right: 1rem; bottom: 3.2rem; z-index: 11; padding: 0.4rem 0.7rem; border-radius: 6px;
+      background: #000a; color: #ccc; font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; }
+    #amp-hint.on { opacity: 1; transition: none; }
+    /* dual-screen console (?vj=1&console=1): preview + key map left, panels right.
+       The WebGL canvases keep rendering off-view; #composite shows the result. */
+    #console-left[hidden] { display: none; }
+    body.console { overflow: auto; }
+    body.console #stage, body.console #hydra-output { visibility: hidden; }
+    body.console #scene-fade, body.console #perform-hint, body.console #amp-hint { display: none; }
+    #console-left { position: fixed; left: 1rem; top: 1rem; bottom: 1rem; width: calc(60vw - 2rem); overflow-y: auto; overflow-x: hidden; }
+    #composite { display: block; box-sizing: border-box; width: 100%; height: auto; background: #000; border: 1px solid #41574d; border-radius: 6px; }
+    #output-state { align-self: center; color: #8a8782; font-size: 0.8rem; }
+    #control-map { width: 100%; margin-top: 0.6rem; border-collapse: collapse; font-size: 0.8rem; }
+    #control-map td { padding: 0.15rem 0.5rem; border-bottom: 1px solid #22222b; }
+    #control-map td:first-child { color: #d9c25b; white-space: nowrap; width: 9em; }
+    #control-map tr.live { background: #2b3d2f; }
+    #control-map tr.live td:first-child { color: #9df0b0; }
+    body.console .hud { left: 60vw; right: 1rem; max-height: calc(100vh - 2rem); overflow: auto; }
+    body.console #vj-controls { max-width: none; }
     #effect-controls { border-top: 1px solid #41574d; margin-top: 0.6rem; padding-top: 0.5rem; }
     #effect-controls select { font: inherit; max-width: 100%; background: #1c1c24; color: #eee; }
     .hud { position: fixed; top: 1rem; left: 1rem; z-index: 10; }
@@ -50,7 +69,7 @@
     .scene-link:hover { background: #393126; }
     .scene-link:focus-visible { outline: 2px solid #f3d992; outline-offset: 3px; }
     .scene-link[hidden] { display: none; }
-    .vj #start-explore, .vj #vj-entry, .vj #monitor, .vj #driver-row, .vj #rec-toggle, .vj #beat-toggle { display: none; }
+    .vj #start-explore, .vj #vj-entry, .vj #console-entry, .vj #show-entry, .vj #monitor, .vj #driver-row, .vj #rec-toggle, .vj #beat-toggle { display: none; }
     #vj-controls { max-width: min(380px, calc(100vw - 4rem)); padding: 0.75rem; background: #111c; border: 1px solid #41574d; border-radius: 8px; }
     #vj-controls[hidden] { display: none; }
     #vj-controls p { margin: 0.4rem 0; }
@@ -91,6 +110,13 @@
   <canvas id="stage" aria-label="Interactive scene: click to lock the mouse, Esc to release"></canvas>
   <canvas id="hydra-output" hidden aria-label="Hydra 效果画面"></canvas>
   <div id="scene-fade" aria-hidden="true"></div>
+  <div id="console-left" hidden>
+    <canvas id="composite" aria-label="输出画面预览"></canvas>
+    <div class="btnrow"><button id="open-output" class="toggle" type="button">打开输出窗口</button>
+      <span id="output-state">输出窗口：未打开</span></div>
+    <table id="control-map" aria-label="手柄键位"></table>
+  </div>
+  <div id="amp-hint" class="corner-hint" role="status"></div>
   <div id="perform-hint" role="status">表演模式 · H 显示控制台 · F 全屏</div>
   <div class="hud">
     <h1>PHOTOLIPSIA</h1>
@@ -98,6 +124,8 @@
       <a id="start-explore" class="toggle scene-link" href="?journey=1">开始探索 · 粒子传送门</a>
       <a class="toggle scene-link" href="/gamepad.html">手柄检测</a>
       <a id="vj-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01">手柄 VJ · 自由飞行</a>
+      <a id="console-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show&amp;console=1">双屏演出 · 控制台</a>
+      <a id="show-entry" class="toggle scene-link" href="?vj=1&amp;scene=s01&amp;audio=show">单屏演出 · 带音乐</a>
       <a id="scene-home" class="toggle scene-link" href="/" hidden>返回首页</a>
     </div>
     <p id="status">loading…</p>
@@ -110,19 +138,22 @@
       <output id="flight-speed-value">1.5</output>
       <button id="flight-reset" class="toggle" type="button">回到入口镜头</button>
       <div id="audio-controls" hidden>
+        <p><button class="toggle" type="button" data-audio-pick>选择音乐文件</button>
+          <input type="file" hidden data-audio-file>
+          <span data-audio-name></span></p>
         <button class="toggle" type="button" data-audio-toggle>▶ 开始音乐</button>
         <span data-audio-clock>--:-- / --:--</span>
-        <p><label for="audio-splat">场景律动</label>
-          <input id="audio-splat" type="range" min="0" max="1" step="0.05" value="0.5" data-audio-splat>
-          <output data-audio-splat-value>0.50</output></p>
+        <p><label for="audio-splat">粒子幅度</label>
+          <input id="audio-splat" type="range" min="0" max="3" step="0.01" value="1" data-audio-splat>
+          <output data-audio-splat-value>1.00×</output></p>
         <p><label for="audio-effect">效果律动</label>
           <input id="audio-effect" type="range" min="0" max="1" step="0.05" value="0.5" data-audio-effect>
           <output data-audio-effect-value>0.50</output></p>
-        <p>空格 播放/暂停 · 切场景音乐不断</p>
+        <p>空格 播放/暂停 · 键盘 ↑/↓ 粒子幅度（0–3×） · 切场景音乐不断<br>选的文件刷新页面后会回到默认曲目</p>
       </div>
       <div id="effect-controls" hidden>
         <label for="effect-preset">Hydra 效果</label>
-        <select id="effect-preset"><option value="0">回声</option><option value="1">波纹</option><option value="2">镜像</option></select>
+        <select id="effect-preset"></select>
         <p data-effect-status>正在加载 Hydra…</p>
         <p>LT 拖影 · RT 扭曲 · LB/RB 换效果 · B 清晰复位<br>A 闪白 · X 色彩分离 · Y 万花筒 · Back 黑白 · ←/→ 色相 · L3 像素 · R3 冻结</p>
         <button class="toggle" type="button" data-effect-preview aria-pressed="false">预览效果</button>

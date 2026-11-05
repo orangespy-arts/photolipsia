@@ -15,7 +15,10 @@ import { createVjEffects } from './ui/vjEffects.js';
 import { createSceneSwitcher } from './ui/sceneSwitcher.js';
 import { createShowAudioControls } from './ui/showAudio.js';
 import { performAction, performFromUrl } from './ui/performKeys.js';
-import { scaleReactivity, audioEffectDrive } from './mapping/audioDrive.js';
+import { parseRes } from './render/resolution.js';
+import { createCompositor } from './ui/compositor.js';
+import { createConsolePanel } from './ui/consolePanel.js';
+import { audioEffectDrive } from './mapping/audioDrive.js';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -252,6 +255,10 @@ document.getElementById('frame-copy').addEventListener('click', () => {
 // arrow keys (WASD too) and greens the ground it passes. The camera follows
 // the ball, so idle spin, drag-orbit and copy-framing are disabled there.
 const config = sceneConfig(url);
+// ?vj=1&console=1 — dual-screen: this window is the console (renders at a
+// fixed size, preview + key map); /output.html shows the clean stream.
+const consoleMode = config.vj && url.get('console') === '1';
+const renderSize = consoleMode ? parseRes(url.get('res')) : null;
 if (config.journey) {
   document.body.classList.add('journey', 'controls-collapsed');
   document.getElementById('start-explore').hidden = true;
@@ -282,12 +289,16 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
   shake: url.get('mode') === 'shake' || showAudio,
   // play mode: the explorer owns the camera — orbit/wheel handlers would fight it
   interactive: !play && !config.vj,
+  renderSize,
 });
 
 let flight = null;
 let effects = null;
 let switcher = null;
 let audioUi = null;
+let compositor = null;
+let consolePanel = null;
+let lastPad = null;
 if (config.vj) {
   document.body.classList.add('vj');
   document.getElementById('vj-controls').hidden = false;
@@ -295,9 +306,23 @@ if (config.vj) {
   if (url.get('hydra') !== '0') effects = createVjEffects({ source: canvas,
     output: document.getElementById('hydra-output'), panel: document.getElementById('effect-controls') });
   flight = createFlightController({ camera: stage.camera, isReady: () => stage.ready && !stage.loadError,
-    onInput: pad => { effects?.setInput(pad); switcher?.input(pad); },
+    onInput: pad => { lastPad = pad; effects?.setInput(pad); switcher?.input(pad); },
     onStatus: message => { document.getElementById('flight-status').textContent = message; } });
   document.getElementById('flight-reset').addEventListener('click', () => flight.reset());
+  if (consoleMode) {
+    document.body.classList.add('console');
+    document.getElementById('console-left').hidden = false;
+    const fadeEl = document.getElementById('scene-fade');
+    compositor = createCompositor({ canvas: document.getElementById('composite'),
+      sources: [canvas, document.getElementById('hydra-output')], size: renderSize,
+      isFading: () => fadeEl.classList.contains('on') });
+    // output.html (window.opener) picks this up and polls for reconnects
+    window.__photolipsiaOutput = compositor;
+    consolePanel = createConsolePanel({ table: document.getElementById('control-map'),
+      openButton: document.getElementById('open-output'), outputState: document.getElementById('output-state'),
+      getPad: () => lastPad, getFx: () => effects?.fx,
+      getFrame: () => ({ canvas: compositor.canvas, frame: compositor.frame }) });
+  }
   // performance mode: H hides the whole console (+cursor), F fullscreen
   const hint = document.getElementById('perform-hint');
   let hintTimer = null;
@@ -316,7 +341,8 @@ if (config.vj) {
     else if (document.fullscreenElement) document.exitFullscreen();
     else document.documentElement.requestFullscreen?.().catch(() => {});
   });
-  if (showAudio && driver?.media) audioUi = createShowAudioControls({ driver, panel: document.getElementById('audio-controls') });
+  if (showAudio && driver?.media) audioUi = createShowAudioControls({ driver, panel: document.getElementById('audio-controls'),
+    hint: document.getElementById('amp-hint'), defaultName: SHOW_TRACK_URL.split('/').pop() });
   // custom ?splat= assets are outside the show catalog: no Start switching
   if (!url.has('splat')) {
     const label = document.getElementById('scene-switch-status');
@@ -409,7 +435,8 @@ function frameLoop() {
       const frame = sanitizeParams(driver.poll(now)).params;
       const visible = applyGains(frame, gains);
       if (recorder) recorder.add({ ...visible, time: frame.time });
-      stage.updateParams(audioUi ? scaleReactivity(visible, audioUi.splatAmount) : visible, dt);
+      if (audioUi) stage.setAmplitude(audioUi.splatAmount);
+      stage.updateParams(visible, dt);
       effects?.setAudio(audioUi ? audioEffectDrive(visible, audioUi.effectAmount) : null);
       explorer?.updateParams(visible);
 
@@ -426,6 +453,9 @@ function frameLoop() {
     audioUi?.update();
     stage.render(now);
     effects?.render(elapsed, stage.ready && !stage.loadError);
+    // same frame as the WebGL renders, before their buffers are presented
+    compositor?.draw(elapsed);
+    consolePanel?.update();
   } catch (err) {
     // surface it on the page — a dead silent loop is the worst failure mode
     setStatus(`render loop error: ${err.message}`, true);

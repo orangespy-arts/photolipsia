@@ -22,6 +22,8 @@ export function createAvModifier({ shake = false } = {}) {
   const uOnset = dyno.dynoFloat(0, 'avOnset');
   const uCentroid = dyno.dynoFloat(0.5, 'avCentroid');
   const uTime = dyno.dynoFloat(0, 'avTime');
+  // whole-displacement amplitude (keyboard ↑/↓): 0 = no motion at all
+  const uAmp = dyno.dynoFloat(1, 'avAmp');
 
   const modifier = dyno.dynoBlock(
     { gsplat: { type: 'Gsplat' } },
@@ -66,7 +68,7 @@ export function createAvModifier({ shake = false } = {}) {
         : dyno.add(f(0.4), bandEnergy);
       const wob1 = dyno.sin(dyno.add(dyno.mul(cx, f(3)), dyno.mul(uTime, f(1.7))));
       const wob2 = dyno.sin(dyno.add(dyno.mul(cz, f(3)), dyno.mul(uTime, f(1.3))));
-      const driftAmt = dyno.mul(f(0.08), wobbleGain);
+      const driftAmt = dyno.mul(dyno.mul(f(0.08), wobbleGain), uAmp);
       const newCenter = dyno.combine({
         vectorType: 'vec3',
         x: dyno.add(dyno.swizzle(center, 'x'), dyno.mul(wob1, driftAmt)),
@@ -110,7 +112,7 @@ export function createAvModifier({ shake = false } = {}) {
     },
   );
 
-  return { modifier, uniforms: { uLow, uMid, uHigh, uOnset, uCentroid, uTime } };
+  return { modifier, uniforms: { uLow, uMid, uHigh, uOnset, uCentroid, uTime, uAmp } };
 }
 
 // Hue rotation as pure dyno operators, returning scalar channels — NOT a

@@ -2,6 +2,61 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-05 — W3h 控制面板选曲
+
+- 新增 `mapping/audioFile.js`（isLikelyAudio 拒 .asd 等、displayName 截断保留扩展名、accept 列表）+ 2 项测试；web-audio 驱动 `loadSource(src)`（同一 audio 元素换源，等 loadedmetadata / error）；`showAudio` 加选择按钮、隐藏 file input、曲名显示，blob URL 换曲时释放，失败回退上一曲目；按钮点击后 blur，防止空格重复触发。
+- 验证：npm test 202、check 通过。无头 Edge（`DOM.setFileInputFiles` 选真实文件）：scratchpad 生成的 6 秒 2Hz 节拍 wav → 曲名 "test beat.wav"、00:00/00:06；播放 2.5 秒后 00:02、按钮变暂停、onset 采样 0.78/0.56/0.34/0.26/0.72… 随节拍起伏、拖影 25%；内容非音频的 broken.wav → 显示"无法播放该文件：broken.wav"，曲名保持 test beat.wav，再点播放正常。0 错误。
+- 未提交。
+
+## 2026-11-05 — W3g 粒子幅度 + 修复音乐抖动从未生效
+
+- 新增 `mapping/amplitude.js`（×/÷1.25、0–3、<0.05 归零、0 起步回 0.1）+ 3 项测试。`avModifier` 加 `uAmp` 乘整段位移；`stage.setAmplitude()`；`showAudio` 键盘 ↑/↓（忽略输入框/组合键，阻止页面滚动）、滑杆 0–3×、右下角 `#amp-hint`（控制台模式隐藏）；`controlMap` 加键盘行（`keys` 字段，`activeRows` 兼容无 buttons）。删除 `scaleReactivity` 及其测试。
+- **根因 bug**：首轮无头测试三档幅度帧间差都≈0.5——粒子根本没动。查 Spark 源码：`SplatMesh` 仅在 version 变化时重建 generator，dyno uniform 改值不会触发。项目从未调用 `updateVersion()`，所以 W3a 起"场景随音乐抖动"一直无效。修复：`updateParams` 写完 uniform 后 `splat.updateVersion()`；幅度为 0 时重算一次后跳过。
+- 验证：npm test 200、check 通过。无头 Edge（`audio=show&hydra=0`，真实键盘事件）：0× 帧间差 0.49、1.19× 13.13、3× 17.70；帧率 静态 46.3 / 音乐 1× 42.2 / 音乐 0× 46.8（软件渲染）。中途一次用 git stash 做"修复前"对照无效（旧 stage 无 setAmplitude，渲染循环报错），已恢复并改用静态场景作基线。真实 GPU 未测。
+- 未提交。
+
+## 2026-11-05 — 首页加控制台入口
+
+- `index.html` 入口栏加"双屏演出 · 控制台""单屏演出 · 带音乐"两个链接，VJ 页内隐藏。
+- 验证：无头 Edge 首页可见 5 个入口；点"双屏演出 · 控制台"→ URL `?vj=1&scene=s01&audio=show&console=1`、body.console、预览栏显示。出现的控制台错误来自浏览器扩展脚本，与本项目无关。
+- 未提交。
+
+## 2026-11-05 — 输出窗口改为控制台推送
+
+- 用户截图（输出窗口 D 诊断）：`循环 17/s · 复制 0/s · 控制台帧 无 · 输出帧 -1`。结论：真实 Zen 中输出窗口读不到 `window.opener.__photolipsiaOutput`，且输出窗口 rAF 被节流。
+- 改动：`output.js` 暴露 `window.__photolipsiaPresent(src, frame)`，按帧号去重绘制；opener 拉取保留为后备；诊断加"推送/s"。`consolePanel.js` 每帧（合成之后）调用 popup 的 present；控制台状态行显示推送/复制/输出循环速率。`main.js` 传 `getFrame`。
+- 验证：npm test 198、check 通过。无头 Zen（BiDi，独立 profile）在输出页执行 `window.opener = null` 后：pushes 67→105、中心像素输出=预览、转镜头输出截图差 32.2。无头 Edge：推送 49/s、像素一致、转镜头差 32.0（首跑一次差 0.0，复跑正常，记为无头截图偶发）。测试后清理残留无头 Edge。真实 Zen 待用户确认。
+- 未提交。
+
+## 2026-11-05 — 输出窗口在 Zen 仍不动：诊断
+
+- 用户：逐帧复制后 Zen 里输出仍不动。
+- 复现尝试：scratchpad `zen.mjs`，WebDriver BiDi 驱动 `C:/Program Files/Zen Browser/zen.exe --headless`（独立临时 profile，不碰用户的 Zen），注入模拟手柄，带 userActivation 点"打开输出窗口"。结果：输出 connected，2 秒内复制 41 帧（无头约 21fps），转镜头前后输出截图平均差 32.7，无异常。无头 Zen 未复现。
+- 改动：`output.js` 复制循环先排下一帧再执行并 try/catch（异常不再让循环停死）；`?debug=1` 或 D 键叠加计数器；`__OUTPUT__` 增加中心像素与可见性。`consolePanel.js` 每秒在控制台"输出窗口"行显示：循环/s、复制/s、可见、中心像素（输出/预览）、错误。
+- 验证：npm test 198、check 通过；无头 Zen 中控制台该行显示正常。待用户在真实 Zen 中读数。
+- 未提交。
+
+## 2026-11-05 — W4b 修复：输出窗口在 Zen 不动
+
+- 用户用 Zen 浏览器（Firefox 内核）：控制台在动、输出窗口停住。判断为 Firefox 系跨窗口 MediaStream 只显示首帧。
+- `src/output.js` 默认改为 rAF 里 `drawImage(opener 的 #composite)`，用合成器帧计数只复制新帧；`?via=stream` 保留旧方式。`compositor` 暴露 `canvas` 与 `frame`，`window.__photolipsiaOutput = compositor`。`output.html` 加输出画布。
+- 验证：npm test 198、check 通过；无头 Edge：输出 connected、1 秒内复制 37 个新帧（无头后台窗口节流）、转镜头前后输出截图平均差 32.8、0 错误；结束后手动清理残留无头 Edge。Zen 里未验证（我没有驱动 Zen 的工具链），需用户确认。
+- 未提交。
+
+## 2026-11-05 — W4b 双屏控制台 + 干净输出
+
+- 新增：`render/resolution.js`（`?res=`，默认 1920×1080）、`stage.js` 支持固定 renderSize；`mapping/fadeAlpha.js`；`ui/compositor.js`（高斯 + Hydra + 黑场合成到 2D 画布，captureStream）；`output.html` + `src/output.js`（opener 取流、每秒检查重连、双击/F 全屏）；`ui/controlMap.js`（键位表数据 + 高亮判断）；`ui/consolePanel.js`。`main.js` 控制台模式接线，`index.html` 控制台布局（左预览+键位表可滚动，右原面板）。测试 +4（分辨率、淡入淡出、键位表覆盖与高亮）。
+- 验证：npm test 198、check 通过。scratchpad 无头 Edge（独立 profile）脚本：控制台 1366×768，合成 1280×720、流 active；带用户手势点"打开输出窗口"→ 输出页 connected、videoWidth 1280、currentTime 2.50→3.52；选漩涡+Y+RT0.85 后控制台与输出截图一致，键位表 RT、Y 行高亮；B 清除 + Start 切场：输出端先见黑场再见第 5 场；控制台 180 帧 60.0fps p95 16.8ms；键位表最后一行可滚动到可见；0 控制台错误。修复：控制台左栏不能滚动（键位表被截断）、预览边框导致横向滚动条。
+- 顺带发现：第一次测试脚本（与 `scripts/probe-vj.mjs` 同样的启动方式）结束后无头 Edge 进程没退出，且用的是用户默认 profile（加载了用户扩展）；已手动结束 9225 端口的无头进程。`probe-vj.mjs` 本身有同样问题，未改。
+- 未验证：真实双屏、真实全屏、真手柄、真实 GPU 帧率。未提交。
+
+## 2026-11-05 — W3f 预设扩充到 10 种
+
+- 用户取消键盘映射（W3e），改为 LB/RB 循环更多、区分更明显的预设。`EFFECT_NAMES` 扩为 10 个；`hydraStage.build` 改为预设表：漩涡 modulateRotate(shape)、隧道 modulateScale(osc.kaleid)、扫描故障 modulateScrollX(横条×噪声门)、频闪 方波 color、色阶 posterize、版画 thresh、分屏 repeat 2→4、液化 modulate(o0)。"镜像"移除（与 Y 万花筒重复）。
+- 下拉框选项由 `EFFECT_NAMES` 生成；状态行显示"n/10 名称"。测试：10 个名称唯一、RB 走完一圈回到 1。
+- 验证：npm test 194、check 通过。内置浏览器面板被关闭，改用 scratchpad 无头 Edge 脚本（基于 probe-vj.mjs，注入模拟手柄 RT 0.85）逐个截图：十种肉眼可区分；扫描故障/版画首轮太弱/太黑，调参后复拍确认；频闪 8 帧亮度 81/81/12/12 交替；松开 RT 后 Hydra 输出隐藏、回原画；控制台 0 问题。真实 GPU 帧率与手柄手感未测。
+- 未提交。
+
 ## 2026-11-05 — W3d 表演模式
 
 - 新增 `src/ui/performKeys.js`（H/F 键判断、忽略重复/组合键/输入框；perform=1 只在 vj 页生效）+ 3 项测试。
