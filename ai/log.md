@@ -2,6 +2,56 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-04 — 弃用 Unity，改 Web + Hydra
+
+- 用户决定不再使用 Unity，作业用本仓库 JS（Spark）+ Hydra 交付。
+- strategy 新增 W0–W7 计划，Unity 节（S/R/U）搁置保留；仅改文档，未改代码。
+- 用户确认交付形式：手柄实时演出 + 录屏。
+- W0（go，留作存档）：strategy 中 Unity 三节标搁置；两份 Unity 文档加存档横幅；docs/README、architecture 双轨节同步标注。grep 确认 src/ 无 AudioVizURP 引用。npm test 176 通过。
+- `docs/unity-s0-smoke.md` 去留已定：存档。
+
+## 2026-11-04 — Unity 文件导入重新起步（计划）
+
+- 用户要求开始 Unity 部分，从导入文件开始；新增 U0–U2 计划并刷新 Next，等待 go 后指导首个文件导入。
+- 本轮仅更新策略与日志；尚未核实当前新 Unity 工程或编辑器状态，不将旧 AudioVizURP 的准备工作视为新工程已完成。
+- 验证：文档变更后运行 npm test；结果见本轮回复。Unity 导入与画面尚未验证。
+
+## 2026-11-04 — AudioVizURP 报废，重建计划 R0–R5 写入（等 go）
+
+- 用户宣布"这个项目报废了 我打算重新建一个"——指 Unity 工程 AudioVizURP（用户当时正照 S0 手册操作，IDE 打开着 unity-s0-smoke.md）。**报废原因尚未告知**：已请用户原样抄录报废时的 error，避免重建踩同一坑；若是管线性问题（如包冲突、PLY 导入冻结）重建时规避，若是工程损坏重建即解。
+- 按 plan-first 流程本轮只写计划不动实现：strategy.md 新增"报废重建"节 R0–R5（Hub 新建 photolipsia-unity URP 工程 6000.3.9f1 → 包改用 Add package from disk 由 Unity 自己写 manifest 路径（消除 file: 相对路径解析不确定性）→ git init + .ply 例外 → 拷 ruin1.ply/S0PipelineSmoke.cs → Play 可见+呼吸 → Recorder 10 秒片 → 汇报勾 S0），## Next 置顶等 go。
+- 可复用资产盘点：D:\libs\UnityGaussianSplatting（MIT v2.0.0）直接复用；docs/unity-s0-smoke.md 第 5/6 步照用；S0PipelineSmoke.cs 文件层复制；ruin1.ply 从 Web 仓库重拷。废弃项：AudioVizURP 的 manifest.json 本轮改动（recorder 5.1.7 + file: 包引用）随之作废，不回滚不迁移。
+- 记录一次真损坏与修复：strategy.md 编辑后重建节曾出现内容重复交错（sed 原始输出可见 R3 行尾并入重复开头），用 head/tail/cat bash 拼接整体重建该区域修复；随后 git diff 落盘 + grep 独立核对——可疑行在实际 diff 中 0 处，决策（G3）等全部原位唯一，文件完好。教训固化：本轮损坏判定的可靠信号只有"落盘再 grep"与 git diff 落盘核对；Bash stdout 与 Read 的显示串扰会伪造损坏假象（含 git diff 的 stdout），单看任一工具输出不可下结论。
+- 验证：本轮 Web 仓库仅改 ai/strategy.md、ai/log.md（文档），npm test 176/176 通过；AudioVizURP 侧无新改动（S0 文件层成果保留在旧工程内，重建后按 R3 重做）。
+
+## 2026-11-04 — S0 管线冒烟：文件层就位 + 用户操作手册（用户要求不代做）
+
+- go 收到后实施 S0；用户中途明确"不要替我做，写个 md 告诉我步骤"。agent 只做文件层准备，Unity 编辑器操作全部交用户。
+- 侦察 UnityGaussianSplatting v2.0.0（aras-p，克隆到 D:\libs，MIT）：v2 API 已变——不再需要"Create Asset"导入流程，`GaussianSplatRenderer.m_SourcePath` 直接填 PLY 路径（StreamingAssets 相对/绝对/URL 均可）；`m_SplatScale`（0.1–2.0）公开字段即呼吸入口，S0 的"整 scale 呼吸可行"疑点解除；Windows 要求 DX12（DX11 不渲染）；`GS_ENABLE_URP` 由 versionDefines 自动启用；URP 集成要求 ForwardRenderer 挂 `GaussianSplatURPFeature` 且 RenderGraph Compatibility Mode 关。
+- 查 AudioVizURP 工程事实：Windows 图形 API 列表首位 02000000=Direct3D12 ✓；ForwardRenderer.asset 的 m_RendererFeatures 为空（待挂）；URP 资产无 compatibilityMode 序列化项（默认关）。manifest.json 加 `org.nesnausk.gaussian-splatting`（file: 相对路径）和 `com.unity.recorder 5.1.7`（registry 实查最新 5.1.x）。
+- 落盘：AudioVizURP/Assets/StreamingAssets/ruin1.ply（130MB，从 Web 仓库拷入；是否进 git 待 S0 验证后再定 gitignore 例外）；Assets/Editor/S0PipelineSmoke.cs——反射给 ForwardRenderer 挂 render feature + 主场景放 S0_RuinSplat（m_SourcePath=ruin1.ply）+ 无相机时建 S0_MainCamera(0,1.5,6) + graphicsDeviceType/compatibilityMode 诊断日志，提供菜单项和 BatchSetup 两个入口。
+- agent 代跑 Unity batch 被权限层拦截（外部克隆包需用户确认），与用户"自己动手"意愿一致，未重试；代跑入口保留在文档末尾。
+- 新文档 docs/unity-s0-smoke.md：七步操作手册（开工程等导入 → 包管理器核对 → Compatibility Mode/MSAA/DX12 三个开关检查 → 菜单一键场景设置 → Play 看画面+呼吸验证 → Recorder 出 10 秒片（MP4 1080p60 帧区间 1–600）→ 回报清单），含失败对照表和手动替代路径。
+- 验证：本轮 Web 仓库仅新增文档，npm test 176/176 通过；docs/unity-s0-smoke.md 与 S0PipelineSmoke.cs 全文逐行核对完好（Read 输出再现显示串扰，原始字节无损坏，与上轮结论一致）。待办：用户按手册执行第 1–7 步回报结果，之后更新 strategy.md 勾 S0 并等 go 进 S1。
+
+## 2026-11-04 — Show 计划定案：Unity Timeline 固定剪辑作业（仅计划，未动实现）
+
+- 作业定位收敛：本次交付固定剪辑视听视频（曲目固定，镜头/场景/效果按时间轴预排，Unity Recorder 离线出片）；未来长成实时演出视觉工具。Web 降回实验室，Unity 成主战场。
+- 选型讨论结论：Unity Timeline + Cinemachine + UnityGaussianSplatting（引擎内已有 AudioVizURP 工程，6000.3.9f1 URP，含 AudioAnalyzer 骨架）；Unreal Sequencer 不选（UE 无成熟 splat 管线）；Hydra 不迁库（绑 WebGL/JS 闭包），用 URP Shader Graph 重写等效效果（拖影=feedback RT、扭曲=UV 扰动、万花筒=kaleid），Web 端调好的参数作规格。
+- 用户提供十场景叙事弧线（无机→生命→融合→重生），已录入 strategy.md；每场主角参数映射表（rms/beatPhase/onset/centroid 等，协议字段不变）与转换语汇配额（每种 ≤2 次）一并落纸。
+- 工作流痛点解决：Web 无 Timeline、一次录不成的问题由 Unity Timeline 的分段编辑/逐段预览/随时修改解决；OSC 实时输入推迟到未来演出阶段，本次作业音频事件在 Timeline 打标记。
+- 风险预登记：UnityGaussianSplatting 的 per-splat 编辑限制（植物复绿可能要 compute shader 或降级烘焙）；十场景 PLY 是长周期瓶颈；S0 管线冒烟先行避免资产投入后才发现管线不通。
+- 计划写入 ai/strategy.md 的 "Show 计划" 节（S0–S6 七步，等 go 实施 S0）；Track 2 条目升级为作业主线。docs/unity-setup-guide.md 的工程建议被 AudioVizURP 现实取代（同版本、已有骨架），其陷阱备忘（URP renderer feature、PLY 格式、大资产、防火墙）仍适用。
+- 验证：本轮仅文档变更；`npm test` 176/176 照常通过；strategy.md/log.md 经 grep 与 sed 原始字节核对无损坏（本轮多次 Read 输出出现显示串扰，均确认为显示层问题而非文件损坏）。
+
+## 2026-11-04 — G3b-a Hydra 效果自动化性能审计
+
+- 新增 `scripts/probe-vj.mjs`（零依赖，CDP headless，仿 probe-explorer 模式）：打开 `/?vj=1&scene=ruin`，等待场景与 Hydra 面板就绪，经真实 CDP 鼠标路径点击"预览效果"（65% 扳机模拟，与界面预览同一路径），三阶段各 300 帧 rAF 审计——A Hydra 空闲直通、B 效果激活、C `&hydra=0` 基线；记录 canvas 分辨率 × dpr，前后截图对比确认合成有效；统计 console error/异常（favicon 404 已知无害，按 text+url 过滤）。
+- 结果（三轮一致）：A/B/C 全部 60.0fps、p50 16.7ms、p95 16.8–16.9ms、无 >34ms 帧——Hydra 效果激活无可测帧时间开销；1280×800 @ dpr 1，stage 与 hydra 缓冲一致；截图 `.check/vj-hydra-before.png`（清晰原画）/ `vj-hydra-active.png`（明显拖影扭曲）确认效果真实合成。
+- 调试记录：fps 审计的 `Runtime.evaluate` 初版缺 `awaitPromise: true`，Promise 结果被串化为 `[object Object]`——补上修复；favicon 404 在 `Log.entryAdded` 中 URL 位于 `e.url` 而非 `e.text`，初版过滤漏判致误 FAIL，改为 text+url 联合匹配后 PASS。
+- 限制：headless 使用软件光栅化，数字不能代表真实 GPU 负载；预览模拟不经过真实手柄输入路径。G3b-b（真实手柄：无扳机原画、双扳机组合、LB/RB 一次一档、B 复位、失焦重连、飞行+效果同时操作）与 G3b-c（目标分辨率录屏负载，OBS 开/关各测）待用户本机完成。
+- 验证：`node --check` 通过；探针最终运行 PASS（exit 0）；`npm test` 176/176；`git diff --check` 干净。
+
 ## 2026-11-04 — G3a Hydra 与手柄效果接入
 
 - 用户批准依赖，固定安装 hydra-synth 1.4.0（新增 40 个包；安装审计提示 4 个 low 级问题，未强制升级）。工具未读取/编辑 node_modules 文件；应用按官方发行路径加载本地 bundle。

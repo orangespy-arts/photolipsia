@@ -45,6 +45,10 @@ perform live.
 
 ## Two-track plan: web lab + Unity performance engine
 
+> **Superseded 2026-11-04**: Unity is dropped. This web repo (Spark +
+> hydra-synth) is now the performance engine and the deliverable: live
+> gamepad VJ performance, screen-recorded. Section kept for history.
+
 Decided 2026-10-26, revised same day. **Unity is the live-performance
 destination**; the web repo is its lab, not a replacement.
 

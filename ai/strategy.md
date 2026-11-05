@@ -53,6 +53,9 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 - [ ] Track 2 — minimal Unity project: URP + UnityGaussianSplatting +
       OSC listener (Room of Sounds OSC.cs), `/av/band/low` → splat scene
       breathing; protocol doc copied over as source of truth
+      （**2026-11-04 升级为作业主线，见下方 Show 计划；OSC 部分留待
+      未来实时演出阶段，本次作业音频在 Timeline 内排**）
+      （**2026-11-04 搁置：用户弃用 Unity，作业改 Web + Hydra**）
 
 ## Decisions
 
@@ -71,7 +74,45 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 
 ## Next
 
-- 2026-11-04：G3a 已实现，用户已批准 hydra-synth 1.4.0；176 项测试与完整 check 通过。浏览器实际看到回声/波纹/镜像预览与清晰复位。下一步 G3b 真实手柄组合操作和目标分辨率录屏性能；未宣称录屏彩排完成。
+- 2026-11-04：W0 完成——Unity 三节计划标搁置，`docs/unity-s0-smoke.md` / `unity-setup-guide.md` 加存档横幅，architecture 双轨节标 superseded，Web 代码无 AudioVizURP 引用。下一步 W1：用户用真实手柄在 `?vj=1&scene=ruin` 试操作并反馈手感。
+- 2026-11-04：**用户决定放弃 Unity，作业改用本仓库 JavaScript（Spark 高斯）+ Hydra 交付**。Unity 相关计划（Show S0–S6、报废重建 R0–R5、U1–U2）全部搁置。新计划 W0–W7 见下方"Web + Hydra 作业"节，等 go；交付形式已定：手柄实时演出 + 录屏。下一步等 go 做 W0（需用户定 `docs/unity-s0-smoke.md` 存档还是删除）。
+
+## 2026-11-04 — Web + Hydra 作业（用户决定弃用 Unity；W0 已完成）
+
+定位：作业交付约十分钟视听表演视频，全部在浏览器内完成：Spark 渲染
+高斯场景，Hydra 做后期效果，手柄实时控制镜头与效果（沿用 G 系列已
+完成的 `?vj=1` 飞行 + Hydra 三预设），录屏出片。十场景叙事弧线和每场
+主角参数映射沿用 Show 计划节的内容（与引擎无关）。
+
+- [x] W0. 收尾 Unity 线：strategy 中 S/R/U 节标"搁置"；`docs/unity-s0-smoke.md`
+      保留为存档或删除（问用户）；Web 仓库不再引用 AudioVizURP。
+- [ ] W1. 真实手柄验收（即 G3b-b）：用户操作，我按反馈微调速度/曲线。
+- [ ] W2. VJ 多场景：`?vj=1` 下手柄切场景（如 Back/Start 前后一场），
+      下一场预加载，先做最便宜的黑场淡入淡出转换；场景目录从 2 场扩展的
+      接口不变（`sceneCatalog.js`）。纯函数状态机 + 单测。
+- [ ] W3. 音频进 VJ：固定曲目用 web-audio 文件驱动播放，AVParams 同时驱动
+      高斯（已有 avModifier）和 Hydra 参数（新增纯映射函数，如 rms→反馈量、
+      onset→扭曲脉冲），手柄扳机与音频叠加而非互相覆盖。单测覆盖映射。
+- [ ] W4. 演出提示表 show JSON v0：段落时间 → 建议场景/预设/转换类型，
+      HUD 显示当前段与倒计时（录屏时可隐藏）；只提示不强制，手动随时接管。
+      格式写进 docs，加 sanitize + 单测。
+- [ ] W5. 出片方式定案（即 G3b-c）：OBS 采集 vs 浏览器内 MediaRecorder
+      （canvas.captureStream + 音频轨，零依赖）各测一组目标分辨率帧时间/
+      丢帧，选一个。
+- [ ] W6. 场景逐个接入：PLY 就绪一场接一场（目录条目 + 入口机位 + 主角参数）。
+      PLY 来源仍是长周期瓶颈。
+- [ ] W7. 联排 + 正式录制 + 导出。
+
+- 决策（W）：用户明确"不用 Unity 了，用 JavaScript 搭配 Hydra"；Hydra 不再
+  需要用 Shader Graph 重写，直接用已接入的 hydra-synth 1.4.0。Unity 节内容
+  保留作历史记录，不删除。
+- 决策（W0）：用户选"留作存档"，Unity 文档加横幅不删除；`src/rec/record.js` 注释里的 Unity 泛指未来工具，不改。
+- 决策（W）：用户确认交付形式为**手柄实时演出 + 录屏**；W4 提示表只提示不驱动。
+
+- 2026-11-04：本次从 Unity 文件导入重新开始，按下方 U0–U2 小步指导；等用户 go 后先确认当前新工程位置及包版本，再给对应的导入操作，不沿用旧工程已完成的假设。
+- 2026-11-04：用户决定**报废 AudioVizURP，重建 Unity 工程**（原因待用户补充：报废 error 原样抄录可避免重建踩同坑）。重建计划 R0–R5 已写入下方"报废重建"节，等 go 实施；S0 验收标准不变，七步手册 docs/unity-s0-smoke.md 大部分直接转移。
+- 2026-11-04：Show 计划已写入（Unity Timeline 固定剪辑作业主线，S0–S6 十步）。下一步等 go 实施 **S0 管线冒烟**：AudioVizURP 装 UnityGaussianSplatting + ruin1.ply 可见 + Recorder 10 秒测试片。G3b-b/c（真实手柄/录屏负载）转为未来实时演出阶段的前置项，不阻塞作业。
+- 2026-11-04：G3b-a 完成——`scripts/probe-vj.mjs` 三阶段审计 A Hydra 空闲 / B 效果激活(65% 预览) / C &hydra=0 全部 60.0fps、p95 16.8ms、无 >34ms 帧，效果合成经截图确认；headless 软件光栅化不代表真实 GPU。
 - 2026-11-04：用户确认 G1 浏览器检测正常；G2 自由飞行已接入 ?vj=1&scene=ruin，172 项测试及完整 check 通过。下一步真实手柄试飞，确认速度/转向手感；随后细化 G3 Hydra 接入。尚未验证本轮实际画面与录屏性能。
 
 ## 2026-11-04 — VJ 手柄接入（go 已收到，G1 实现）
@@ -82,7 +123,20 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 - [x] G2. 新增独立 VJ 自由飞行：双摇杆移动/转向、十字键升降、死区与平滑，失焦/断开/长帧停止，恢复需回中；速度调节、入口复位与当前取景复制。172 项测试及完整 check 通过，实际手感待用户验证。
 - [ ] G3. Hydra 接入另行细化：扳机控制效果、预设切换与清晰画面复位；单场景录屏性能验证后扩展十场景编排。
 - [x] G3a. 用户批准安装 hydra-synth 1.4.0；本地发行文件、同帧高斯→Hydra、独立画布与原画回退。LT 反馈、RT 扭曲、LB/RB 三预设、B 清晰复位；共享飞行输入和失焦/断连保护，扳机松开平滑归零，重连需释放。176 项测试与完整 check 通过；浏览器三预设及清晰复位已看到。
-- [ ] G3b. 实际画面与录屏验收：先验证无扳机时原画、双扳机组合、肩键一次一档、B 复位、失焦/重连和自由飞行同时操作；记录实际分辨率与帧时间，录屏负载单独测量，之后再扩展场景。
+- [ ] G3b. 实际画面与录屏验收，拆三步（自动化部分等 go）：
+  - [x] G3b-a. 代理自动化完成（`scripts/probe-vj.mjs`，不接真实手柄）：
+        CDP 点击"预览效果"（65% 扳机模拟，与用户预览同路径）让 Hydra
+        激活，三阶段 300 帧审计：A Hydra 空闲 / B 效果激活 / C &hydra=0
+        基线——全部 60.0fps、p95 16.8ms、无 >34ms 帧，Hydra 开销无可测
+        差异；1280×800 @ dpr 1，stage 与 hydra 缓冲一致；截图确认效果
+        已合成（非直通）。预览模拟不含真实手柄输入路径，仅覆盖
+        渲染/合成负载。
+  - [ ] G3b-b. 用户真实手柄操作：无扳机原画、双扳机组合（LT 拖影 +
+        RT 扭曲同时）、LB/RB 一次一档不连跳、B 复位、失焦/重连保护、
+        自由飞行与效果同时操作的手感。
+  - [ ] G3b-c. 用户录屏负载单独测量：目标分辨率（演出用分辨率）下
+        OBS/采集的帧时间与丢帧，Hydra 开 vs 关各记一组；之后再扩展
+        十场景编排。
 
 决策：最终交付为约十分钟视听表演，用户希望实时控制镜头和效果，计划最多十个场景；先完成输入验证，每回合一步。
 决策：本轮仅更新计划与日志，按 AGENTS.md 等待 go 后实施 G1；系统测试正常不代表浏览器或场景接入已通过。
@@ -90,7 +144,117 @@ Four drivers: `web-audio` (mic/file/display audio), `osc` (WebSocket bridge
 决策（G2）：用户“来吧”授权本步；新增 ?vj=1 单场景自由飞行模式，独立于贴地探索/传送门；左摇杆按镜头朝向移动，右摇杆转向，十字键世界垂直升降。保留静态原色；无碰撞约束，提供回到入口镜头按钮。失焦/断连立即停止，恢复后先回中再允许移动；本轮不接 Hydra。
 决策（G2 实现）：VJ 参数优先于 play/journey；镜头从场景目录入口初始化，自定义资产不套用目录入口；用户 view 优先。移动速度默认 1.5，摇杆径向死区 15%，俯仰限制避免翻转，无新依赖或音频协议改动。
 决策（G3）：用户确认飞行“可以 没问题”并同意继续效果；依赖尚未批准，本轮只细化方案。Hydra 官方支持外部 canvas 和 autoLoop:false 的手动 tick；优先本地加载，避免录屏依赖 CDN。官方参考：https://github.com/hydra-synth/hydra-synth 。
+决策（G3b 拆步）：G3b 分为 a（代理自动化：预览按钮模拟扳机测渲染负载与分辨率，等 go）、b（用户真实手柄组合操作）、c（用户录屏负载）；a 不宣称覆盖真实手柄路径，b/c 由用户本机完成。
 决策（G3a）：用户回复“可以”批准新增依赖；Hydra 固定 1.4.0，关闭全局函数注入、自动循环、麦克风分析和自带录制流。镜像使用万花筒混合，复位清空双反馈缓冲；提供界面预览和 &hydra=0 原画模式。自动化没有模拟真实物理手柄。
+
+## 2026-11-04 — Show 计划：Unity Timeline 固定剪辑作业（**搁置 2026-11-04：用户改走 Web + Hydra，见 W 节**）
+
+十场景弧线与每场映射表仍有效（引擎无关），其余步骤搁置。
+
+定位：本次课程作业交付一支**固定剪辑视听视频**（曲目固定，镜头/场景/
+效果全部按时间轴预排，Unity Recorder 离线出片）；同一套资产与总谱
+未来长成实时演出视觉工具（OSC/手柄/走位触发在那时接入）。Web 仓库
+降回实验室角色（协议/映射/单测），Unity 成为主战场。
+
+**十场景叙事弧线**（用户提供，无机 → 生命 → 融合 → 重生）：
+1 废墟入口（无机冷淡）→ 2 空城（缝隙植物）→ 3 地下通道（节拍初现）
+→ 4 机器大厅 → 5 水下中庭 → 6 菌丝温室 → 7 晶体裂谷 → 8 异变圣殿
+（高潮）→ 9 云海遗迹（释放留白）→ 10 重生庭院（植物覆盖，呼应开场）。
+植物复绿机制是贯穿主线：2 → 6 → 10 植物戏份递增。
+
+**引擎决策**：
+- Unity（D:\Github\AudioVizURP，6000.3.9f1 + URP，已有 AudioAnalyzer
+  等脚本骨架）为主引擎：UnityGaussianSplatting 渲染 PLY + Unity
+  Timeline 排镜头/段落 + Cinemachine 固定机位 + Unity Recorder 出片。
+  选它的决定性因素：十场景全是 3DGS 扫描件，Unity 管线已验证；
+  Timeline 解决"一次录不成"问题（分段排、逐段预览、随时改）。
+- Hydra 效果不迁库（hydra-synth 绑 WebGL/JS 闭包，无 Unity 等价物），
+  用 URP Shader Graph 重写等效：拖影=feedback RT、扭曲=UV 扰动、
+  万花筒=kaleid UV 变换，挂全屏后处理 Pass；Web 端调好的参数
+  （feedback 0.92/scale 1.012 等）作为 Unity 端规格。
+- Unreal Sequencer 不选：splat 管线在 UE 无成熟方案，风险大于收益。
+
+**步骤**（每回合一步，`npm test` 在 Web 仓库照常跑；Unity 端以
+"编译无报错 + 编辑器实测"为验证）：
+
+- [ ] S0. 管线冒烟（先验证能出片，再投入资产）：AudioVizURP 工程装
+      UnityGaussianSplatting（local package，按 docs/unity-setup-guide.md
+      §2 含 URP renderer feature 配置）→ 导入 ruin1.ply → 场景可见
+      splat → Unity Recorder 出 10 秒测试片。同时确认该包 per-splat
+      编辑限制下的整 scale 呼吸可行。
+- [ ] S1. Timeline 骨架：曲目音频轨 + 两个已有场景（废墟/僵尸城）
+      的 Cinemachine 机位 + Camera Cuts 切换 + Recorder 出第一版粗剪
+      （无声画对位要求，先打通"排什么出什么"）。
+- [ ] S2. 效果轨：Shader Graph 重写 Hydra 三预设（拖影/扭曲/万花筒）
+      挂 URP 全屏后处理，Timeline 动画轨驱动强度曲线。
+- [ ] S3. 十场景逐个接入：每场 PLY 资产 + 场景校准（地面/尺度/机位，
+      重新实测不能抄 Web 坐标）+ 该场主角参数（rms 呼吸/beatPhase
+      步进/onset 爆发等，见下方映射表）+ Timeline 段落排布。
+      PLY 来源是长周期瓶颈，就绪一场接一场。
+- [ ] S4. 转换语汇在 Timeline 落地：黑场（最便宜先做）→ onset 碎裂
+      → 粒子传送门；转换类型不重复原则， tied 到段落标记。
+- [ ] S5. 植物复绿的 Unity 策略：先做技术验证（compute shader 或
+      CPU 批改 splat 数据二选一，实测后定）；若成本超预算，作业版
+      仅在第 2/6/10 场做预烘焙生长动画（Timeline 直接摆 scale/opacity
+      关键帧），实时复绿留给未来工具。
+- [ ] S6. 联排 + 出片：全片 Timeline 预览修节点 → Recorder 按目标
+      分辨率离线渲染 → 与曲目合成导出。
+
+**每场主角参数映射**（协议字段不变，Web 端调好权重搬 Unity）：
+1 rms 呼吸（刻意低响应铺垫）/ 2 植物 onset 冒头 / 3 beatPhase 步进
+/ 4 band-low 抖动 / 5 centroid 光影横扫 / 6 植物加速+rms / 7 centroid
++flatness 强反差 / 8 全合奏 onset 主导 / 9 beatPhase 微动留白 / 10
+植物满覆全合奏。转换语汇：2 行进抵达、3 传送门、4 onset 碎裂、5
+Hydra 吞没(Shader Graph 版)、6 光流、7 传送门、8 黑场亮起、9 黑场
+静默、10 行进收尾——每种类型 ≤2 次。
+
+**总谱 JSON（show file）**：段落表 + 相机关键帧 + 效果权重 + 转换
+标记，引擎无关；Web 端实机验证过格式后 Unity 端读同一份。格式 v0
+等 S1 落地时定义。
+
+- 决策（Show）：作业走 Unity Timeline 固定剪辑（用户明确想学
+  Timeline/出片管线），Web 分段 take 方案废止；Unity 工程用已有
+  AudioVizURP（同版本 6000.3.9f1，有 AudioAnalyzer 骨架），不再重建
+  photolipsia-unity；十场景 PLY 资产在 Unity 工程内管理（其
+  gitignore 放行 .ply 资产目录），不进 Web 仓库。
+- 决策（Show）：植物复绿是叙事主轴但实现成本最高，S5 先技术验证后
+  定实时/烘焙路线，允许作业版降级为关键场烘焙。
+- 决策（Show）：OSC 实时输入整体推迟到未来实时演出阶段；本次作业
+  音频事件（onset/节拍）在 Timeline 打标记，比实时检测更精准。
+
+## 2026-11-04 — AudioVizURP 报废重建（**搁置 2026-11-04：用户改走 Web + Hydra，见 W 节**）
+
+用户宣布 AudioVizURP 报废、重建 Unity 工程。可复用资产：
+`D:\libs\UnityGaussianSplatting`（MIT v2.0.0 clone）直接复用；
+`docs/unity-s0-smoke.md` 第 5/6 步（看画面+呼吸、Recorder 参数）不变；
+`Assets/Editor/S0PipelineSmoke.cs` 文件层复制进新工程；
+`ruin1.ply` 从 Web 仓库重新拷。改造点：包安装改为 **UI 加 disk**
+（Package Manager → Add package from disk，Unity 自己写 manifest 路径，
+消除 file: 相对路径解析的不确定性）。
+
+- [ ] R0. Hub 新建 URP 模板工程 `photolipsia-unity`（6000.3.9f1，位置
+      `D:\Github\photolipsia-unity`，照 docs/unity-setup-guide.md §1 原建议）；
+      Editor 设置确认 Visible Meta Files + Force Text（默认已是）。
+- [ ] R1. Package Manager → **Add package from disk** →
+      `D:\libs\UnityGaussianSplatting\package\package.json`；
+      注册表搜 Unity Recorder 加 5.1.x；Console 无 error。
+- [ ] R2. git init + Unity 官方 .gitignore + 资产目录 .ply 例外
+      （十场景 PLY 进此工程，照 Show 决策）。
+- [ ] R3. 拷 ruin1.ply 进 StreamingAssets + 新场景放 GaussianSplatRenderer
+      （Source Path=ruin1.ply）+ 拷 S0PipelineSmoke.cs 挂
+      GaussianSplatURPFeature → Play 可见 + 拖 Splat Scale 呼吸（照手册第 5 步）。
+- [ ] R4. Recorder 出 10 秒测试片（MP4 1080p60 帧区间 1–600，照手册第 6 步）。
+- [ ] R5. 汇报结果勾 S0；确认报废原因若属管线性问题（非旧工程损坏），重建时规避。
+
+验证以"编译无报错 + 编辑器实测"为准，每回合一步，新依赖先问。
+
+## 2026-11-04 — Unity 从文件导入开始（**搁置 2026-11-04：用户改走 Web + Hydra，见 W 节**）
+
+- [x] U0. 阅读现有重建计划及 S0 手册，明确本次从首个场景文件导入开始。
+- [ ] U1. 确认用户当前 Unity 工程路径、是否已打开及 Gaussian Splatting 包版本；核对本地包说明，给出对应的包安装/首个 PLY 文件导入步骤，由用户在编辑器操作。
+- [ ] U2. 首个文件导入成功后，再配置 URP 渲染与场景相机，验收可见画面和 Console；通过后回归 S0 出片计划。
+
+决策：沿用此前用户自行操作 Unity 的方式；本轮只写计划，不复制大资产、不修改 Unity 工程、不安装依赖。默认首个文件为原计划 ruin1.ply，实际路径与工程状态在 U1 确认。
 
 ## Earlier next items
 
