@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createSky } from './sky.js';
 import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
 import { createAvModifier } from './avModifier.js';
 import { parseTf } from './framing.js';
@@ -194,6 +195,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   }
 
   let ampSettled = null; // mesh already regenerated at amplitude 0
+  let sky = null; // procedural sky dome, created on first use (W6c)
   let hueApplied = 0; // stored only in Stage 1; per-splat hue lands in Stage 2 dyno
 
   /**
@@ -233,11 +235,30 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     // slow idle spin for life; ?spin=0 stills it (also the drag-orbit gate).
     // Writes only the y component so a ?tf= rotation survives.
     if (!staticEnvironment && spin !== 0) splat.rotation.y = timeSeconds * 0.15;
+    sky?.tick(timeSeconds);
     renderer.render(scene, camera);
   }
 
   return {
     updateParams, render, swapSplat,
+    // config from mapping/skyPresets.js skyFor(); null hides the sky
+    setSky(config) { if (!config && !sky) return; sky ??= createSky({ scene, camera }); sky.set(config); },
+    // world-space splat centres for spawn finding (mapping/spawnFinder.js):
+    // every k-th splat, faint ones (usually floaters) skipped. Null until loaded.
+    samplePoints(maxPoints = 200000, minOpacity = 0.2) {
+      if (!ready || !splat.numSplats) return null;
+      splat.updateMatrixWorld(true);
+      const m = splat.matrixWorld, v = new THREE.Vector3();
+      const stride = Math.max(1, Math.ceil(splat.numSplats / maxPoints));
+      const out = new Float32Array(Math.ceil(splat.numSplats / stride) * 3);
+      let n = 0;
+      splat.forEachSplat((i, center, _scales, _quat, opacity) => {
+        if (i % stride || opacity < minOpacity) return;
+        v.copy(center).applyMatrix4(m);
+        out[n++] = v.x; out[n++] = v.y; out[n++] = v.z;
+      });
+      return out.subarray(0, n);
+    },
     // music-motion amplitude for the splat displacement (no-op when static)
     setAmplitude(value) {
       if (!av || av.uniforms.uAmp.value === value) return;

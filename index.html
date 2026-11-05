@@ -34,6 +34,10 @@
     #amp-hint { position: fixed; right: 1rem; bottom: 3.2rem; z-index: 11; padding: 0.4rem 0.7rem; border-radius: 6px;
       background: #000a; color: #ccc; font-size: 0.9rem; pointer-events: none; opacity: 0; transition: opacity 0.8s ease; }
     #amp-hint.on { opacity: 1; transition: none; }
+    [data-input-device] { font: inherit; font-size: 0.75rem; max-width: 100%; background: #1c1c24; color: #eee; }
+    [data-input-device][hidden] { display: none; }
+    .toggle:disabled { opacity: 0.45; cursor: default; }
+    .audio-linked-title { color: #d9c25b; font-size: 0.8rem; margin-bottom: 0.1rem; }
     /* dual-screen console (?vj=1&console=1): preview + key map left, panels right.
        The WebGL canvases keep rendering off-view; #composite shows the result. */
     #console-left[hidden] { display: none; }
@@ -138,18 +142,22 @@
       <output id="flight-speed-value">1.5</output>
       <button id="flight-reset" class="toggle" type="button">回到入口镜头</button>
       <div id="audio-controls" hidden>
+        <p><button class="toggle" type="button" data-input-toggle>🎤 切到麦克风</button>
+          <span data-input-status>输入：音乐文件</span>
+          <select data-input-device hidden aria-label="麦克风设备"></select></p>
         <p><button class="toggle" type="button" data-audio-pick>选择音乐文件</button>
           <input type="file" hidden data-audio-file>
           <span data-audio-name></span></p>
         <button class="toggle" type="button" data-audio-toggle>▶ 开始音乐</button>
         <span data-audio-clock>--:-- / --:--</span>
-        <p><label for="audio-splat">粒子幅度</label>
+        <p class="audio-linked-title">♪ 随声音联动（音乐越响动得越多，0 = 不跟声音）</p>
+        <p><label for="audio-splat" title="粒子随音乐跳动的幅度">♪ 粒子幅度（随声音）</label>
           <input id="audio-splat" type="range" min="0" max="3" step="0.01" value="1" data-audio-splat>
           <output data-audio-splat-value>1.00×</output></p>
-        <p><label for="audio-effect">效果律动</label>
+        <p><label for="audio-effect" title="Hydra 拖影/扭曲随音乐变化的强度">♪ 效果律动（随声音）</label>
           <input id="audio-effect" type="range" min="0" max="1" step="0.05" value="0.5" data-audio-effect>
           <output data-audio-effect-value>0.50</output></p>
-        <p>空格 播放/暂停 · 键盘 ↑/↓ 粒子幅度（0–3×） · 切场景音乐不断<br>选的文件刷新页面后会回到默认曲目</p>
+        <p>空格 播放/暂停 · 键盘 ↑/↓ 粒子幅度（0–3×） · ←/→ 效果律动（0–1） · 切场景音乐不断<br>选的文件刷新页面后会回到默认曲目</p>
       </div>
       <div id="effect-controls" hidden>
         <label for="effect-preset">Hydra 效果</label>

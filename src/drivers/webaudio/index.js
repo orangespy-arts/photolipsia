@@ -26,7 +26,7 @@ const SMOOTH = { attack: 0.05, release: 0.2 }; // protocol-recommended constants
 
 export function createWebAudioDriver({ source = 'mic', file = null, url = null, fps = 60, beat: beatEnabled = true } = {}) {
   const analysis = createAnalysisState();
-  const gain = createAutoGainState();
+  let gain = createAutoGainState();
   const smooth = {
     low: { value: 0 }, mid: { value: 0 }, high: { value: 0 },
     rms: { value: 0 },
@@ -38,6 +38,8 @@ export function createWebAudioDriver({ source = 'mic', file = null, url = null, 
   let analyser = null;
   let mags = null; // Float32Array filled per poll
   let mediaEl = null; // <audio> element for file source
+  let mediaNode = null; // its source node (kept so the mic can swap in/out)
+  let mic = null; // { stream, node } while the live microphone feeds the analyser
   let started = false;
   let beat = beatEnabled ? createBeatTracker() : null;
 
@@ -72,6 +74,7 @@ export function createWebAudioDriver({ source = 'mic', file = null, url = null, 
     }
 
     node.connect(analyser);
+    if (mediaEl) mediaNode = node;
     // analyser → destination omitted for mic (feedback); file needs it:
     if (source === 'file' || source === 'url') node.connect(audioCtx.destination);
     // url source waits for an explicit play() (a user gesture); awaiting
@@ -134,6 +137,37 @@ export function createWebAudioDriver({ source = 'mic', file = null, url = null, 
     // transport for the url source; must be called from a user gesture
     async play() { await audioCtx?.resume(); await mediaEl?.play(); },
     pause() { mediaEl?.pause(); },
+    // ── live microphone in place of the track (VJ panel button) ──
+    // Raw input (no echo cancel / noise suppression / AGC); never routed to
+    // the speakers. Call from a user gesture. Resolves { label, deviceId }.
+    async useMic(deviceId = '', onEnded = () => {}) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: {
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      await audioCtx.resume();
+      const previous = mic;
+      mediaEl?.pause();
+      try { mediaNode?.disconnect(analyser); } catch { /* already detached */ }
+      const node = audioCtx.createMediaStreamSource(stream);
+      node.connect(analyser);
+      mic = { stream, node };
+      if (previous) { previous.node.disconnect(); previous.stream.getTracks().forEach((t) => t.stop()); }
+      gain = createAutoGainState(); // re-learn levels for the new input
+      const track = stream.getAudioTracks()[0];
+      track?.addEventListener('ended', () => { if (mic?.stream === stream) onEnded(); });
+      return { label: track?.label ?? '', deviceId: track?.getSettings?.().deviceId ?? '' };
+    },
+    // back to the track: release the device, track resumes where it paused
+    useMusic() {
+      if (mic) { mic.node.disconnect(); mic.stream.getTracks().forEach((t) => t.stop()); mic = null; }
+      if (mediaNode) { try { mediaNode.connect(analyser); } catch { /* connected */ } }
+      gain = createAutoGainState();
+    },
+    async listInputs() {
+      const all = await navigator.mediaDevices?.enumerateDevices?.() ?? [];
+      return all.filter((d) => d.kind === 'audioinput').map((d) => ({ id: d.deviceId, label: d.label || '麦克风' }));
+    },
+    get micStream() { return mic?.stream ?? null; },
     // swap the track on the same <audio> element: the analyser chain stays
     // connected. Resolves once metadata (duration) is known; rejects when the
     // browser cannot play the source.

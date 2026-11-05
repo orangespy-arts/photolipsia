@@ -9,6 +9,8 @@ import { fmtVec3, fmtTf } from './render/framing.js';
 import { createMonitor } from './ui/monitor.js';
 import * as THREE from 'three';
 import { sceneConfig } from './render/sceneConfig.js';
+import { sceneById } from './render/sceneCatalog.js';
+import { skyFor } from './mapping/skyPresets.js';
 import { createJourney } from './render/journey.js';
 import { createFlightController } from './render/flightController.js';
 import { createVjEffects } from './ui/vjEffects.js';
@@ -18,6 +20,7 @@ import { performAction, performFromUrl } from './ui/performKeys.js';
 import { parseRes } from './render/resolution.js';
 import { createCompositor } from './ui/compositor.js';
 import { createConsolePanel } from './ui/consolePanel.js';
+import { createAutoSpawn } from './ui/autoSpawn.js';
 import { audioEffectDrive } from './mapping/audioDrive.js';
 
 const statusEl = document.getElementById('status');
@@ -292,6 +295,9 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
   renderSize,
 });
 
+// catalog scenes with no captured sky get the procedural one (W6c)
+if (!url.has('splat') && (url.has('scene') || config.vj)) stage.setSky?.(skyFor(sceneById(url.get('scene'))));
+
 let flight = null;
 let effects = null;
 let switcher = null;
@@ -347,8 +353,11 @@ if (config.vj) {
   if (!url.has('splat')) {
     const label = document.getElementById('scene-switch-status');
     label.hidden = false;
+    // automatic entrance per scene; a hand-framed ?view= wins for the first scene
+    const autoSpawn = createAutoSpawn({ stage });
     switcher = createSceneSwitcher({ stage, flight, startId: url.get('scene'),
-      fade: document.getElementById('scene-fade'), label });
+      fade: document.getElementById('scene-fade'), label,
+      onReady: (id) => autoSpawn.forScene(id), skipFirstReady: url.has('view') });
   }
   const speed = document.getElementById('flight-speed');
   speed.addEventListener('input', () => {

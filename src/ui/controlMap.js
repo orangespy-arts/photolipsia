@@ -17,7 +17,8 @@ export const CONTROL_MAP = [
   { input: '十字键 ← / →', action: '色相 往回 / 往前', buttons: [14, 15] },
   { input: 'L3（开/关）', action: '像素化', buttons: [10], toggle: 'pixel' },
   { input: 'R3（按住）', action: '冻结画面', buttons: [11] },
-  { input: '键盘 ↑ / ↓', action: '粒子随音乐跳动幅度 0–3×（键盘，非手柄）', keys: ['ArrowUp', 'ArrowDown'] },
+  { input: '键盘 ↑ / ↓', action: '♪ 粒子幅度（随声音）0–3×（键盘，非手柄）', keys: ['ArrowUp', 'ArrowDown'] },
+  { input: '键盘 ← / →', action: '♪ 效果律动（随声音）0–1（键盘，非手柄）', keys: ['ArrowLeft', 'ArrowRight'] },
   { input: '键盘 空格', action: '音乐 播放 / 暂停', keys: ['Space'] },
 ];
 

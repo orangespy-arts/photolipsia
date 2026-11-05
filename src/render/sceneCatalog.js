@@ -12,10 +12,14 @@ const placeholderExplorer = () => ({
   navigation: { bounds: { min: [-1.8, -0.23, -3], max: [1.8, 3, 3] }, obstacles: [] },
 });
 
-export const SCENES = NAMES.map((name, i) => ({
-  id: `s${String(i + 1).padStart(2, '0')}`, name, file: `ruin${i + 1}.ply`,
-  explorer: placeholderExplorer(),
-}));
+// Scans whose sky was never captured get a procedural sky (W6c,
+// mapping/skyPresets.js) instead of showing the black page background.
+const SKIES = { s02: 'overcast', s09: 'bright' };
+
+export const SCENES = NAMES.map((name, i) => {
+  const id = `s${String(i + 1).padStart(2, '0')}`;
+  return { id, name, file: `ruin${i + 1}.ply`, explorer: placeholderExplorer(), ...(SKIES[id] ? { sky: SKIES[id] } : {}) };
+});
 
 export const sceneAssetUrl = (scene) => `/3dscene/${encodeURIComponent(scene.file)}`;
 export const sceneById = (id) => SCENES.find((scene) => scene.id === id) ?? SCENES[0];

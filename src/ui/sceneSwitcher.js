@@ -1,14 +1,18 @@
 import { SCENES, sceneAssetUrl } from '../render/sceneCatalog.js';
 import { sceneConfig } from '../render/sceneConfig.js';
 import { advanceSceneSwitch, sceneSwitchState } from '../mapping/sceneSwitch.js';
+import { skyFor } from '../mapping/skyPresets.js';
 
 const FADE_MS = 600;
 
 // VJ scene switching: Start → fade to black, swap the splat in place, jump
 // the camera to the new entrance, fade back in once the scene has loaded.
-export function createSceneSwitcher({ stage, flight, startId, fade, label }) {
+// onReady(sceneId) → view|null runs once a scene has loaded, before the
+// fade-in, so an automatic entrance jump is never seen (W6b).
+export function createSceneSwitcher({ stage, flight, startId, fade, label, onReady = () => null, skipFirstReady = false }) {
   let switchState = sceneSwitchState(Math.max(0, SCENES.findIndex((s) => s.id === startId)));
-  let phase = 'idle', timer = null; // idle | fading | loading
+  // the page's first load goes through the same loading → ready path
+  let phase = 'loading', timer = null, first = true; // idle | fading | loading
   const scene = () => SCENES[switchState.index];
 
   function show() {
@@ -23,6 +27,7 @@ export function createSceneSwitcher({ stage, flight, startId, fade, label }) {
       timer = null;
       const s = scene();
       stage.swapSplat(sceneAssetUrl(s));
+      stage.setSky?.(skyFor(s));
       flight.setHome(sceneConfig(new URLSearchParams(`vj=1&scene=${s.id}`)).view);
       const next = new URL(location.href);
       next.searchParams.set('scene', s.id);
@@ -32,6 +37,7 @@ export function createSceneSwitcher({ stage, flight, startId, fade, label }) {
     }, FADE_MS);
   }
 
+  fade.classList.add('on');
   show();
   return {
     // fed with the flight snapshot: null while paused/loading, so presses
@@ -43,7 +49,15 @@ export function createSceneSwitcher({ stage, flight, startId, fade, label }) {
     },
     update() {
       if (phase === 'loading' && (stage.ready || stage.loadError)) {
-        phase = 'idle'; if (stage.ready) fade.classList.remove('on');
+        phase = 'idle';
+        if (stage.ready) {
+          if (!(first && skipFirstReady)) {
+            const view = onReady(scene().id);
+            if (view) flight.setHome(view);
+          }
+          fade.classList.remove('on');
+        }
+        first = false;
       }
       show();
     },

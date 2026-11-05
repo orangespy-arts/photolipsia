@@ -2,6 +2,32 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-05 — W3i 麦克风输入切换
+
+- 用户澄清"画面跟随声音"= 麦克风现场声音，按钮放控制面板。
+- 新增 `mapping/inputMode.js`（toggle / mic-ok / mic-failed / mic-ended 归约器 + 面板文字）+ 3 项测试。web-audio 驱动加 `useMic(deviceId, onEnded)`、`useMusic()`、`listInputs()`：麦克风源接分析器、不接喇叭，音乐源节点从分析器断开/重连，自动增益重置，旧麦克风轨道停止。`showAudio` 加切换按钮、状态文字、设备下拉框，麦克风模式下播放键禁用、空格无效。
+- 验证：npm test 216、check 通过。无头 Edge（`--use-fake-device-for-media-stream --use-fake-ui-for-media-stream`，页面内包装 getUserMedia 记录轨道）：初始"输入：音乐文件 · 5songDJ.wav"；播放到 00:02 后切麦克风 →"输入：麦克风 · Fake Default Audio Input"、播放键禁用、设备 3 个、轨道 live；onset 0.40/0.26/0.22/0.92/…/1.00，拖影 12% 扭曲 40%；空格无效；音乐时钟保持 00:02；切回 → 轨道 ended、播放键可用。0 错误。
+- 未提交。
+
+## 2026-11-05 — 随声音标注 + 键盘 ←/→ 效果律动
+
+- `index.html` 音乐面板加"♪ 随声音联动"说明与两个滑杆的"（随声音）"标签、悬停说明；`amplitude.js` 加 `stepEffectSync`（0.05 步、0–1、对齐干净值）+ 1 项测试；`showAudio` ←/→ 调效果律动、↑/↓ 调粒子幅度，提示文字分别显示；`controlMap` 加键盘 ←/→ 行；docs 同步。
+- 验证：npm test 213、check 通过；内置浏览器真实按键 →×3、↑×2、←×1：效果律动 0.50→0.60、粒子幅度 1.00→1.56×，右下提示正确，页面未滚动。
+- 未提交。
+
+## 2026-11-05 — W6c s02/s09 云天空
+
+- 新增 `mapping/skyPresets.js`（overcast / bright 两套，hex 颜色 + 云量/柔和/不透明/尺度/速度，skyFor 归一化与回退）+ 3 项测试（只有 s02、s09 有天空等）；`render/sky.js` 天空球着色器；`stage.setSky()`（首次使用才创建）并在 render 里推进时间；`sceneCatalog` 给 s02/s09 加 `sky`；`main.js` 首次加载、`sceneSwitcher` 换场时设置。
+- 验证：npm test 212、check 通过。无头 Edge 在 s02/s09 出生点及右转、上仰共 3 个角度截图：原黑色区域均为天空+云，扫描粒子照常叠在前面；对照室内 s04 无天空。帧率 s02 90.4 / s09 102.4 / s04 97.8（软件渲染）。首版接缝明显，按截图取样调色后复拍，接缝变淡；s02 个别角度仍可见扫描自带蓝天的边界。
+- 未提交。
+
+## 2026-11-05 — W6b 自动出生点
+
+- 新增 `mapping/spawnFinder.js`（稳健裁剪 coreOf → 分位数范围 → 48³ 体素 → BFS 距离场 → 最大空腔连通域 → 有地面且≥3 个水平方向有墙 → 离中心近 + 空隙大打分 → 16 方向找"能碰到场景的最深方向"；无空腔退回中心柱上方）+ 7 项合成场景测试（空房间、中央空心柱、开放地面、远处离群点、40% 天空壳、一端开口长厅、点太少）。`stage.samplePoints()`（世界坐标、跳过不透明度<0.2）；`ui/autoSpawn.js`（按场景缓存，控制台打印结果与真实最近距离）；`sceneSwitcher` 首次加载也走"黑场→就绪→onReady→淡入"，`skipFirstReady` 尊重手动 view。
+- 迭代：首轮 s02/s09 被天空壳撑大（格子 4.7/11.4，镜头在 70–100 单位高处，画面全白/全黑）→ 加 coreOf；s09 镜头看向虚空 → 朝向改为只选能碰到几何的方向；合成测试抓到"空心柱子内部"→ 加最大连通空腔约束。
+- 验证：npm test 209、check 通过。无头 Edge 十场：全部 cavity，最近粒子距离 s01 0.98 / s02 8.55 / s03 1.82 / s04 2.43 / s05 2.21 / s06 0.86 / s07 3.74 / s08 1.04 / s09 2.46 / s10 1.90，单场 270–320 ms；十场截图拼图人工检查均在场景内部、朝向有内容。中途开发服务器已停（预览面板关闭），重新启动后测试。真实设备未看。
+- 未提交。
+
 ## 2026-11-05 — W3h 控制面板选曲
 
 - 新增 `mapping/audioFile.js`（isLikelyAudio 拒 .asd 等、displayName 截断保留扩展名、accept 列表）+ 2 项测试；web-audio 驱动 `loadSource(src)`（同一 audio 元素换源，等 loadedmetadata / error）；`showAudio` 加选择按钮、隐藏 file input、曲名显示，blob URL 换曲时释放，失败回退上一曲目；按钮点击后 blur，防止空格重复触发。

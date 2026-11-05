@@ -17,3 +17,12 @@ export function stepAmplitude(value, dir) {
   if (dir < 0) return clampAmplitude(v / AMP_STEP);
   return v;
 }
+
+// Effect-sync level (keyboard ←/→): linear 0..1 in 0.05 steps, snapped so
+// repeated presses land on clean values.
+export const EFFECT_STEP = 0.05;
+export function stepEffectSync(value, dir) {
+  const v = Number.isFinite(value) ? value : 0.5;
+  const next = v + Math.sign(dir) * EFFECT_STEP;
+  return Math.max(0, Math.min(1, Math.round(next / EFFECT_STEP) * EFFECT_STEP));
+}
