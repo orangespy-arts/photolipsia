@@ -14,7 +14,11 @@ test('catalog points at the shared directory; each spawn fits and can rearm afte
     assert.ok(boundaryClearance(p, scene.explorer.navigation) > 1.05);
   }
   assert.equal(sceneConfig(new URLSearchParams('journey=1')).play, true);
-  assert.equal(sceneConfig(new URLSearchParams('scene=city')).splatUrl, sceneAssetUrl(SCENES[1]));
+  assert.equal(SCENES.length, 10);
+  assert.deepEqual(SCENES.map((s) => s.file), Array.from({ length: 10 }, (_, i) => `ruin${i + 1}.ply`));
+  assert.equal(new Set(SCENES.map((s) => s.id)).size, 10);
+  assert.equal(sceneConfig(new URLSearchParams('scene=s02')).splatUrl, sceneAssetUrl(SCENES[1]));
+  assert.equal(sceneConfig(new URLSearchParams('scene=unknown')).splatUrl, sceneAssetUrl(SCENES[0]));
 });
 
 test('approach triggers inside hard boundary; loading never commits and failure stays in source', () => {

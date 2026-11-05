@@ -67,12 +67,29 @@ test('controller gates loading and neutral input, stops on blur/disconnect, rese
 });
 
 test('VJ mode owns camera independently of explorer and uses scene entrance', () => {
-  const config = sceneConfig(new URLSearchParams('vj=1&journey=1&play=1&scene=city'));
+  const config = sceneConfig(new URLSearchParams('vj=1&journey=1&play=1&scene=s02'));
   assert.equal(config.vj, true); assert.equal(config.play, false); assert.equal(config.journey, false);
-  assert.equal(config.staticEnvironment, true); near(config.view.camPos[0], 1.9);
+  assert.equal(config.staticEnvironment, true); near(config.view.camPos[0], 0);
   const custom = sceneConfig(new URLSearchParams('vj=1&splat=/custom.ply'));
   assert.equal(custom.view, undefined);
   const framed = sceneConfig(new URLSearchParams('vj=1&view=0,0,0@1,2,3'));
   assert.deepEqual(framed.view.camPos, [1, 2, 3]);
   assert.equal(sceneConfig(new URLSearchParams('play=1')).play, true);
+});
+
+test('setHome jumps to a new entrance, becomes the reset target and requires neutral sticks', () => {
+  const doc = new EventTarget(); doc.hasFocus = () => true;
+  const camera = new THREE.PerspectiveCamera();
+  const pad = { index: 0, id: 'test', connected: true, mapping: 'standard', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ value: 0, pressed: false })) };
+  let input = 'unset';
+  const controller = createFlightController({ camera, target: new EventTarget(), doc, getPads: () => [pad],
+    isReady: () => true, onInput: value => { input = value; } });
+  controller.update(0.1); pad.axes[1] = -1; controller.update(0.1); assert.ok(camera.position.z < 0);
+  controller.setHome({ camPos: [1, 2, 3], lookAt: [1, 2, 1] });
+  assert.deepEqual(camera.position.toArray(), [1, 2, 3]); near(camera.rotation.y, 0); assert.equal(input, null);
+  controller.update(0.1); assert.deepEqual(camera.position.toArray(), [1, 2, 3]); // stick still held
+  pad.axes[1] = 0; controller.update(0.1); pad.axes[1] = -1; controller.update(0.1);
+  assert.ok(camera.position.z < 3);
+  controller.reset(); assert.deepEqual(camera.position.toArray(), [1, 2, 3]);
+  controller.dispose();
 });

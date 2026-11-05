@@ -13,3 +13,7 @@ public/splats/
 *.ksplat
 *.sog
 *.splat
+
+# show audio — local only
+audio/
+*.wav

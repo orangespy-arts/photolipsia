@@ -12,6 +12,10 @@ import { sceneConfig } from './render/sceneConfig.js';
 import { createJourney } from './render/journey.js';
 import { createFlightController } from './render/flightController.js';
 import { createVjEffects } from './ui/vjEffects.js';
+import { createSceneSwitcher } from './ui/sceneSwitcher.js';
+import { createShowAudioControls } from './ui/showAudio.js';
+import { performAction, performFromUrl } from './ui/performKeys.js';
+import { scaleReactivity, audioEffectDrive } from './mapping/audioDrive.js';
 
 const statusEl = document.getElementById('status');
 const canvas = document.getElementById('stage');
@@ -29,11 +33,12 @@ function setReady() {
 
 // ── driver selection via ?driver= (default: mock) ──
 const url = new URLSearchParams(location.search);
-const zombieScene = url.get('scene') === 'city' || url.get('journey') === '1'
-  || url.get('splat') === '/local-scenes/apocalyptic-zombie-city.ply';
-document.getElementById('zombie-entry').hidden = zombieScene;
-document.getElementById('scene-home').hidden = !zombieScene;
-const driverId = url.get('driver') ?? 'mock';
+document.getElementById('scene-home').hidden = !(url.has('scene') || url.get('journey') === '1');
+// ?vj=1&audio=show — the fixed show track (served from audio/) drives the
+// scene and Hydra through the web-audio driver; playback starts on a gesture.
+const showAudio = url.get('vj') === '1' && url.get('audio') === 'show';
+const SHOW_TRACK_URL = '/audio/5songDJ.wav';
+const driverId = showAudio ? 'web-audio' : (url.get('driver') ?? 'mock');
 
 const DRIVERS = ['mock', 'web-audio', 'osc', 'midi', 'playback'];
 // clickable driver row: switching drivers is a navigation — each driver owns
@@ -68,6 +73,7 @@ registry.register(createMockDriver({ kind: url.get('kind') ?? undefined }));
 async function buildDriver(id) {
   if (id === 'web-audio') {
     const { createWebAudioDriver } = await import('./drivers/webaudio/index.js');
+    if (showAudio) return createWebAudioDriver({ source: 'url', url: SHOW_TRACK_URL });
     const source = url.get('source') ?? 'mic';
     let file = null;
     if (source === 'file') {
@@ -268,17 +274,20 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
   splatUrl: config.splatUrl,
   view,
   tf: config.tf,
-  staticEnvironment: config.staticEnvironment,
+  // show track: VJ scenes react to the music (native colors, shake only)
+  staticEnvironment: config.staticEnvironment && !showAudio,
   spin: url.get('spin') === '0' || play || config.vj ? 0 : undefined,
   // ?mode=shake — colors and scales stay native; wobble jitter is the only
   // audio response (ruins scenes that must not recolor)
-  shake: url.get('mode') === 'shake',
+  shake: url.get('mode') === 'shake' || showAudio,
   // play mode: the explorer owns the camera — orbit/wheel handlers would fight it
   interactive: !play && !config.vj,
 });
 
 let flight = null;
 let effects = null;
+let switcher = null;
+let audioUi = null;
 if (config.vj) {
   document.body.classList.add('vj');
   document.getElementById('vj-controls').hidden = false;
@@ -286,14 +295,40 @@ if (config.vj) {
   if (url.get('hydra') !== '0') effects = createVjEffects({ source: canvas,
     output: document.getElementById('hydra-output'), panel: document.getElementById('effect-controls') });
   flight = createFlightController({ camera: stage.camera, isReady: () => stage.ready && !stage.loadError,
-    onInput: pad => effects?.setInput(pad),
+    onInput: pad => { effects?.setInput(pad); switcher?.input(pad); },
     onStatus: message => { document.getElementById('flight-status').textContent = message; } });
   document.getElementById('flight-reset').addEventListener('click', () => flight.reset());
+  // performance mode: H hides the whole console (+cursor), F fullscreen
+  const hint = document.getElementById('perform-hint');
+  let hintTimer = null;
+  const setPerform = (on) => {
+    document.body.classList.toggle('perform', on);
+    clearTimeout(hintTimer);
+    hint.classList.toggle('on', on);
+    if (on) hintTimer = setTimeout(() => hint.classList.remove('on'), 2000);
+  };
+  setPerform(performFromUrl(url));
+  window.addEventListener('keydown', (event) => {
+    const action = performAction(event);
+    if (!action) return;
+    event.preventDefault();
+    if (action === 'toggle-hud') setPerform(!document.body.classList.contains('perform'));
+    else if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  });
+  if (showAudio && driver?.media) audioUi = createShowAudioControls({ driver, panel: document.getElementById('audio-controls') });
+  // custom ?splat= assets are outside the show catalog: no Start switching
+  if (!url.has('splat')) {
+    const label = document.getElementById('scene-switch-status');
+    label.hidden = false;
+    switcher = createSceneSwitcher({ stage, flight, startId: url.get('scene'),
+      fade: document.getElementById('scene-fade'), label });
+  }
   const speed = document.getElementById('flight-speed');
   speed.addEventListener('input', () => {
     document.getElementById('flight-speed-value').textContent = `${flight.setSpeed(Number(speed.value)).toFixed(1)}`;
   });
-  window.addEventListener('pagehide', () => { flight.dispose(); effects?.dispose(); }, { once: true });
+  window.addEventListener('pagehide', () => { flight.dispose(); effects?.dispose(); switcher?.dispose(); audioUi?.dispose(); }, { once: true });
   window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
 }
 
@@ -374,7 +409,8 @@ function frameLoop() {
       const frame = sanitizeParams(driver.poll(now)).params;
       const visible = applyGains(frame, gains);
       if (recorder) recorder.add({ ...visible, time: frame.time });
-      stage.updateParams(visible, dt);
+      stage.updateParams(audioUi ? scaleReactivity(visible, audioUi.splatAmount) : visible, dt);
+      effects?.setAudio(audioUi ? audioEffectDrive(visible, audioUi.effectAmount) : null);
       explorer?.updateParams(visible);
 
       monitor.update(frame);
@@ -386,6 +422,8 @@ function frameLoop() {
     }
     explorer?.update(dt);
     flight?.update(elapsed);
+    switcher?.update();
+    audioUi?.update();
     stage.render(now);
     effects?.render(elapsed, stage.ready && !stage.loadError);
   } catch (err) {

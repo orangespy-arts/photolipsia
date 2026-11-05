@@ -5,13 +5,15 @@
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SCENES } from '../src/render/sceneCatalog.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = process.env.PORT ? Number(process.env.PORT) : 5175;
+const SHOW_AUDIO_URL = '/audio/5songDJ.wav';
+const SHOW_AUDIO_FILE = '5songDJ.wav';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -31,9 +33,7 @@ const server = createServer(async (req, res) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     let path = decodeURIComponent(url.pathname);
     // Explicit local asset only; never accept a filesystem path from the URL.
-    const sceneFile = path === '/local-scenes/apocalyptic-zombie-city.ply'
-      ? 'Apocalyptic Zombie City.ply'
-      : SCENES.find((scene) => path === `/3dscene/${scene.file}`)?.file;
+    const sceneFile = SCENES.find((scene) => path === `/3dscene/${scene.file}`)?.file;
     if (sceneFile) {
       const asset = createReadStream(join(ROOT, '3dscene', sceneFile));
       asset.once('open', () => {
@@ -45,6 +45,28 @@ const server = createServer(async (req, res) => {
         else res.destroy();
       });
       res.on('close', () => asset.destroy());
+      return;
+    }
+    // Show track: one whitelisted file, with Range support so <audio> can
+    // seek and report duration. Never maps a URL path onto the filesystem.
+    if (path === SHOW_AUDIO_URL) {
+      const file = join(ROOT, 'audio', SHOW_AUDIO_FILE);
+      let size;
+      try { size = statSync(file).size; } catch { res.writeHead(404).end('Show audio unavailable'); return; }
+      const range = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range ?? '');
+      let start = 0, end = size - 1, status = 200;
+      if (range && (range[1] || range[2])) {
+        start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2]));
+        end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+        if (start > end || start >= size) { res.writeHead(416, { 'content-range': `bytes */${size}` }).end(); return; }
+        status = 206;
+      }
+      const headers = { 'content-type': 'audio/wav', 'accept-ranges': 'bytes', 'content-length': end - start + 1, 'cache-control': 'no-store' };
+      if (status === 206) headers['content-range'] = `bytes ${start}-${end}/${size}`;
+      res.writeHead(status, headers);
+      const stream = createReadStream(file, { start, end });
+      stream.pipe(res);
+      res.on('close', () => stream.destroy());
       return;
     }
     if (path === '/') path = '/index.html';

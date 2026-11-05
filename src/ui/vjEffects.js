@@ -1,5 +1,7 @@
 import { advanceEffects, effectState, EFFECT_NAMES } from '../mapping/vjEffects.js';
 import { loadHydra, createHydraStage } from '../render/hydraStage.js';
+import { combineEffectDrive } from '../mapping/audioDrive.js';
+import { advanceButtonFx, fxState, fxLabel } from '../mapping/buttonFx.js';
 
 export function createVjEffects({ source, output, panel }) {
   const status = panel.querySelector('[data-effect-status]');
@@ -7,10 +9,10 @@ export function createVjEffects({ source, output, panel }) {
   const previewButton = panel.querySelector('[data-effect-preview]');
   const resetButton = panel.querySelector('[data-effect-reset]');
   let state = effectState(), input = null, renderer = null, disposed = false, failed = false;
-  let preview = false, wasActive = false, lastLabel = '';
+  let preview = false, wasActive = false, lastLabel = '', audio = null, bHeld = false, fx = fxState(), fxInput = null;
   panel.hidden = false;
   const reset = () => {
-    state = effectState(state.preset); input = null; preview = false;
+    state = effectState(state.preset); input = null; preview = false; fx = fxState();
     previewButton.textContent = '预览效果'; previewButton.setAttribute('aria-pressed', 'false');
     output.hidden = true;
   };
@@ -40,7 +42,12 @@ export function createVjEffects({ source, output, panel }) {
     catch (error) { fail(error); }
   }).catch(error => { if (!disposed) fail(error); });
   return {
+    // music drive from audioEffectDrive(); null = no show track
+    setAudio(drive) { audio = drive; },
     setInput(pad) {
+      // read before reset(): reset clears input, but B must keep muting music
+      bHeld = !!pad?.buttons[1]?.pressed;
+      fxInput = pad; // kept through reset(): buttonFx handles B itself
       input = pad;
       if (!pad && wasActive) reset();
       wasActive = !!pad;
@@ -48,13 +55,15 @@ export function createVjEffects({ source, output, panel }) {
     },
     render(dt, ready) {
       if (disposed || failed) return;
-      if (!renderer || !ready) { status.textContent = '正在准备 Hydra 与场景…'; return; }
+      if (!renderer || !ready) { status.textContent = '正在准备 Hydra 与场景…'; lastLabel = ''; return; }
       let activeInput = input;
       if (preview && document.hasFocus() && !document.hidden) activeInput = { standard: true, triggers: [0.65, 0.65], buttons: [] };
       state = advanceEffects(state, activeInput, dt);
-      try { renderer.render(state, dt); } catch (error) { fail(error); return; }
+      fx = advanceButtonFx(fx, fxInput, dt);
+      const display = combineEffectDrive(state, audio, bHeld);
+      try { renderer.render(display, dt, fx); } catch (error) { fail(error); return; }
       select.value = String(state.preset);
-      const label = `${EFFECT_NAMES[state.preset]} · 拖影 ${Math.round(state.feedback * 100)}% / 扭曲 ${Math.round(state.distortion * 100)}%${state.armed ? '' : ' · 松开扳机与肩键准备'}`;
+      const label = `${EFFECT_NAMES[state.preset]} · 拖影 ${Math.round(display.feedback * 100)}% / 扭曲 ${Math.round(display.distortion * 100)}%${fxLabel(fx) ? ` · ${fxLabel(fx)}` : ''}${state.armed ? '' : ' · 松开扳机与肩键准备'}`;
       if (label !== lastLabel) { status.textContent = label; lastLabel = label; }
     },
     dispose() {

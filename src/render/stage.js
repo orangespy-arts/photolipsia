@@ -30,10 +30,20 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   if (view?.camPos) camera.position.set(...view.camPos);
   if (view?.lookAt) camera.lookAt(...view.lookAt);
 
-  const splat = new SplatMesh({ url: splatUrl, ...(splatBudget ? { lod: true } : {}) });
-  splat.quaternion.array = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // y-down → y-up
-  splat.scale.setScalar(1);
-  scene.add(splat);
+  // ── Stage 2: per-splat audio deformation (GPU dyno graph) ──
+  // shake mode: colors and scales stay native; wobble jitter is the only
+  // audio-driven response.
+  const av = staticEnvironment ? null : createAvModifier({ shake });
+
+  function createMesh(url) {
+    const mesh = new SplatMesh({ url, ...(splatBudget ? { lod: true } : {}) });
+    mesh.quaternion.array = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2]; // y-down → y-up
+    mesh.scale.setScalar(1);
+    if (av) mesh.objectModifier = av.modifier;
+    scene.add(mesh);
+    return mesh;
+  }
+  let splat = createMesh(splatUrl);
 
   // ?tf= splat basis transform: position, euler-degrees rotation, uniform
   // scale — lets a non-centered scan be placed without retraining it.
@@ -55,11 +65,6 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   }
   const baseScale = 1;
 
-  // ── Stage 2: per-splat audio deformation (GPU dyno graph) ──
-  // shake mode: colors and scales stay native; wobble jitter is the only
-  // audio-driven response.
-  const av = staticEnvironment ? null : createAvModifier({ shake });
-  if (av) splat.objectModifier = av.modifier;
 
   // SparkRenderer is the actual splat-drawing pass (a THREE.Mesh attached
   // to the camera) — without it the canvas stays black even though the
@@ -154,10 +159,27 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   let ready = false;
   let disposed = false;
   let loadError = null;
-  splat.initialized.then(
-    () => { if (disposed) splat.dispose(); else ready = true; },
-    (err) => { loadError = err?.message ?? String(err); },
-  );
+  // Only the current mesh may flip ready/loadError: a superseded load that
+  // finishes late (scene swapped mid-download) is ignored.
+  function track(mesh) {
+    mesh.initialized.then(
+      () => { if (disposed) mesh.dispose(); else if (mesh === splat) ready = true; },
+      (err) => { if (mesh === splat) loadError = err?.message ?? String(err); },
+    );
+  }
+  track(splat);
+
+  // VJ scene switch: replace the splat in place, reusing renderer and camera.
+  // The ?tf= basis belonged to the first scene only, so it is dropped here.
+  function swapSplat(url) {
+    if (disposed) return;
+    const old = splat;
+    scene.remove(old);
+    old.dispose();
+    ready = false; loadError = null; tfScale = 1;
+    splat = createMesh(url);
+    track(splat);
+  }
 
   function resize() {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -206,7 +228,7 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
   }
 
   return {
-    updateParams, render,
+    updateParams, render, swapSplat,
     dispose() { disposed = true; splat.dispose(); sparkRenderer.dispose(); renderer.dispose(); },
     get ready() { return ready; },
     get loadError() { return loadError; },

@@ -2,6 +2,46 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-05 — W3d 表演模式
+
+- 新增 `src/ui/performKeys.js`（H/F 键判断、忽略重复/组合键/输入框；perform=1 只在 vj 页生效）+ 3 项测试。
+- `index.html`：`body.perform` 隐藏 `.hud`、`#monitor` 和鼠标；右下角提示 2 秒淡出。`main.js` VJ 段接键盘。
+- 验证：npm test 193、check 通过；内置浏览器 `?vj=1&scene=s04&perform=1` 截图：先只有右下提示，4 秒后纯画面；H 显示控制台、再按隐藏，computed display none、cursor none。F：requestFullscreen 在用户激活状态下被调用，但内置面板既未全屏也未返回结果——判断为面板限制，真实 Chrome 未验证。
+- 未提交。
+
+## 2026-11-05 — W3c 剩余按键映射 Hydra
+
+- 新增 `src/mapping/buttonFx.js`（开关按下沿翻转、按住类平滑、首帧只记录不翻转、B/失焦/非标准/坏帧全清、色相按住旋转并回绕）+ 5 项测试。
+- `hydraStage.js` 加 o1（像素化 + 万花筒混合）、o2（RGB 错位分离 + hue + saturate/contrast + invert）两级后处理，全部参数 0 时恒等；冻结通过把反馈混合量拉到 1 并跳过空闲清屏实现。
+- `ui/vjEffects.js` 推进按键层并在状态行列出开着的层；HUD 提示行与 `docs/vj-controls.md` 键位表更新。Home 不映射（Windows 浏览器读不到）。
+- 验证：npm test 190、check 通过；内置浏览器模拟手柄逐键：X/Y/Back/L3/A/→ 各自截图画面变化正确；R3 按住转镜头画面冻结、松开恢复；B 清空全部层并隐藏 Hydra 输出；全开四层 60.0fps vs 关 60.2fps（1024×768，dpr 1.25，本机）。控制台无错误。真实手柄与录屏负载未测。
+- 未提交。
+
+## 2026-11-05 — W3a 固定曲目音画联动
+
+- 用户给的 `5songDJ.wav.asd` 是 Ableton 分析文件；拷同目录 `5songDJ.wav`（126.9MB，实测 11:59）到 `audio/`，`.gitignore` 加 `audio/`、`*.wav`。
+- `serve.mjs`：白名单 `/audio/5songDJ.wav`，支持 Range。web-audio 驱动加 `url` 来源 + play/pause/media；url 来源 start 时不 await resume（避免无手势时卡住页面启动）。
+- 新增 `src/mapping/audioDrive.js`（scaleReactivity / audioEffectDrive / combineEffectDrive / formatClock）+ 4 项测试；`src/ui/showAudio.js`（播放按钮、时钟、两个滑杆、空格）；VJ+音乐时场景用 shake 模式；Hydra 渲染用合成后的 display 状态。
+- 实测中发现并修复：B 按住时 reset() 清空 input，导致音乐驱动没被静音——改为在 setInput 里先记下 B 状态。
+- 验证：npm test 185、check 通过；curl 音频 206/其他 404；内置浏览器点击播放：时钟走动、onset 0.2–0.9、拖影约 30%/扭曲 5–35% 随音乐变化；Start 切场音乐不断（00:10→00:11）；B 按住显示 0%/0%，松开恢复；效果律动 0 → 0%/0%。场景律动（GPU 抖动）未做数值验证，只看到画面正常。真实手柄与听感未测。
+- 未提交。
+
+## 2026-11-05 — W2a Start 切下一场
+
+- 新增 `src/mapping/sceneSwitch.js`（纯函数，Start 上升沿、松开才重新武装、循环、无手柄/非标准布局不触发）+ 4 项测试；`stage.swapSplat(url)` 原地换 SplatMesh（旧的 dispose，迟到的旧加载结果被忽略）；`flight.setHome(view)` 换入口并要求回中 + 1 项测试；`src/ui/sceneSwitcher.js` 管黑场/HUD/URL。
+- 修复：`ui/vjEffects.js` 场景重新加载后 Hydra 状态文字停在"正在准备"（lastLabel 缓存未重置）。
+- 验证：npm test 181 通过，npm run check 通过；内置浏览器（需显示面板，隐藏时 rAF 不跑）注入模拟手柄：s09→s10→s01→s02→s03，s03 加载中再按被忽略；s03→s04 机器大厅画面正常，控制台无错误。真实手柄未测。
+- 更正 W6a 记录：每场 numSplats=1,920,000（不是 52 万）。VJ 模式无 LOD 预算，真实 GPU 性能待测。
+- 未提交（用户要求先不提交）。
+
+## 2026-11-05 — W6a 十场景替换
+
+- 从 Unity 工程 Assets/Scenes 拷 ruin1–10.ply 到 3dscene/（gitignore，各 130.6MB，md5 互异）。
+- sceneCatalog 改十场 s01–s10（叙事名），explorer 统一占位；移除僵尸城链接/专用路由；scene=ruin 链接改 s01；测试更新（场景数、文件名、未知 id 回落）。
+- 验证：npm test 176 通过、npm run check 通过；curl 十个文件均 200、旧 /local-scenes 路由 404；内置浏览器 ?vj=1 抽查 s01/s05/s10 可见，控制台无错误。其余七场未逐个打开。
+- 新增 .claude/launch.json（内置浏览器启动开发服务器用）。
+- 待办：入口机位占位，开场贴近表面，需 W6b 逐场取景；（更正见上一条：每场 192 万 splat）s10 首次加载约 20 秒（面板隐藏节流所致）。
+
 ## 2026-11-04 — 弃用 Unity，改 Web + Hydra
 
 - 用户决定不再使用 Unity，作业用本仓库 JS（Spark）+ Hydra 交付。

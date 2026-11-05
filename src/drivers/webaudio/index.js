@@ -9,6 +9,8 @@
  * Source is chosen at construction:
  *   { source: 'mic' }   — getUserMedia default input
  *   { source: 'file', file } — an <audio>-backed MediaElementSource
+ *   { source: 'url', url }   — same, from a served URL (VJ show track);
+ *                              plays once, transport via play()/pause()
  *
  * poll(now) is pull-model per the driver contract. Before start() resolves
  * (permission prompt, file load) poll() returns silence.
@@ -22,7 +24,7 @@ import { createBeatTracker, beatUpdate, beatPhase } from './beat.js';
 const FFT_SIZE = 2048;
 const SMOOTH = { attack: 0.05, release: 0.2 }; // protocol-recommended constants
 
-export function createWebAudioDriver({ source = 'mic', file = null, fps = 60, beat: beatEnabled = true } = {}) {
+export function createWebAudioDriver({ source = 'mic', file = null, url = null, fps = 60, beat: beatEnabled = true } = {}) {
   const analysis = createAnalysisState();
   const gain = createAutoGainState();
   const smooth = {
@@ -59,14 +61,22 @@ export function createWebAudioDriver({ source = 'mic', file = null, fps = 60, be
       mediaEl.loop = true;
       node = audioCtx.createMediaElementSource(mediaEl);
       await mediaEl.play().catch(() => { /* autoplay block: user gesture resumes */ });
+    } else if (source === 'url') {
+      if (!url) throw new Error('url source needs a url');
+      mediaEl = new Audio();
+      mediaEl.preload = 'auto';
+      mediaEl.src = url;
+      node = audioCtx.createMediaElementSource(mediaEl);
     } else {
       throw new Error(`unknown web-audio source "${source}"`);
     }
 
     node.connect(analyser);
     // analyser → destination omitted for mic (feedback); file needs it:
-    if (source === 'file') node.connect(audioCtx.destination);
-    await audioCtx.resume();
+    if (source === 'file' || source === 'url') node.connect(audioCtx.destination);
+    // url source waits for an explicit play() (a user gesture); awaiting
+    // resume() here would hang page start-up until the first click.
+    if (source !== 'url') await audioCtx.resume();
     started = true;
   }
 
@@ -121,6 +131,10 @@ export function createWebAudioDriver({ source = 'mic', file = null, fps = 60, be
   return {
     id: 'web-audio',
     source,
+    // transport for the url source; must be called from a user gesture
+    async play() { await audioCtx?.resume(); await mediaEl?.play(); },
+    pause() { mediaEl?.pause(); },
+    get media() { return mediaEl; },
     start,
     stop,
     poll,

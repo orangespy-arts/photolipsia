@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * VJ probe (G3b-a): Hydra effect-load audit without a real gamepad.
- * Opens ?vj=1&scene=ruin headless, clicks the "预览效果" button (the same
+ * Opens ?vj=1&scene=s01 headless, clicks the "预览效果" button (the same
  * 65%-trigger preview path the UI uses), and compares frame timing:
  *   A — Hydra loaded but idle (passthrough, zero effects)
  *   B — Hydra active (preview at 65% triggers)
@@ -17,8 +17,8 @@ import { spawn } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
 
 const base = (process.argv[2] ?? 'http://localhost:5175').replace(/\/$/, '');
-const vjUrl = `${base}/?vj=1&scene=ruin`;
-const noHydraUrl = `${base}/?vj=1&scene=ruin&hydra=0`;
+const vjUrl = `${base}/?vj=1&scene=s01`;
+const noHydraUrl = `${base}/?vj=1&scene=s01&hydra=0`;
 const PORT = 9225;
 
 const CANDIDATES = [

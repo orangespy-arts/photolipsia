@@ -4,8 +4,9 @@ import { advanceFlight, flightInput, neutralFlightInput, stopFlight } from './fl
 export function createFlightController({ camera, isReady, onStatus = () => {}, onInput = () => {},
   getPads = () => navigator.getGamepads(), doc = document, target = window }) {
   camera.rotation.reorder('YXZ');
-  const home = { position: camera.position.toArray(), yaw: camera.rotation.y, pitch: camera.rotation.x,
-    velocity: [0, 0, 0], angular: [0, 0] };
+  const captureHome = () => ({ position: camera.position.toArray(), yaw: camera.rotation.y, pitch: camera.rotation.x,
+    velocity: [0, 0, 0], angular: [0, 0] });
+  let home = captureHome();
   let state = { ...home }, armed = false, device = null, speed = 1.5, disposed = false;
   let message = '';
   function status(text) { if (text !== message) { message = text; onStatus(text); } }
@@ -44,6 +45,14 @@ export function createFlightController({ camera, isReady, onStatus = () => {}, o
       apply();
     },
     reset() { state = { ...home, position: [...home.position] }; stop(); apply(); status('已回到入口 · 松开摇杆后继续'); },
+    // New scene entrance: aim the camera, make it the reset target, stop and
+    // require sticks to return to neutral before flying again.
+    setHome(view) {
+      if (view?.camPos) camera.position.set(...view.camPos);
+      if (view?.lookAt) camera.lookAt(...view.lookAt);
+      camera.rotation.reorder('YXZ');
+      home = captureHome(); state = { ...home, position: [...home.position] }; stop(); apply();
+    },
     setSpeed(value) { speed = Number.isFinite(value) ? Math.max(0.1, Math.min(10, value)) : 1.5; return speed; },
     dispose() {
       disposed = true; stop();
