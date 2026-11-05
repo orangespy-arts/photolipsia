@@ -14,7 +14,7 @@ test('key map lists every mapped button exactly once and real toggle names', () 
 
 test('rows light up for held buttons, deflected sticks, triggers and active toggles', () => {
   const pad = { axes: [0, 0.9, 0, 0], buttons: Array.from({ length: 17 }, (_, i) => ({ pressed: i === 9, value: i === 7 ? 0.5 : 0 })) };
-  const fx = { toggles: { kaleid: true } };
+  const fx = { toggles: { edge: true } };
   const on = activeRows(pad, fx);
   const at = (input) => on[CONTROL_MAP.findIndex((r) => r.input === input)];
   assert.equal(at('左摇杆'), true); assert.equal(at('右摇杆'), false);

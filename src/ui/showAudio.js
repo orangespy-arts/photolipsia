@@ -136,6 +136,8 @@ export function createShowAudioControls({ driver, panel, hint = null, defaultNam
       if (clock.textContent !== text) clock.textContent = text;
     },
     get inputMode() { return input.mode; },
+    // sound is actually coming in (track playing or live mic) — beat gate
+    get live() { const m = driver.media; return input.mode === 'mic' || (!!m && !m.paused && !m.ended); },
     dispose() { button.removeEventListener('click', toggle); doc.removeEventListener('keydown', onKey); driver.pause(); driver.useMusic?.(); },
   };
 }

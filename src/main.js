@@ -21,6 +21,7 @@ import { parseRes } from './render/resolution.js';
 import { createCompositor } from './ui/compositor.js';
 import { createConsolePanel } from './ui/consolePanel.js';
 import { createAutoSpawn } from './ui/autoSpawn.js';
+import { createStillFrame } from './ui/stillFrame.js';
 import { audioEffectDrive } from './mapping/audioDrive.js';
 
 const statusEl = document.getElementById('status');
@@ -285,11 +286,12 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
   view,
   tf: config.tf,
   // show track: VJ scenes react to the music (native colors, shake only)
-  staticEnvironment: config.staticEnvironment && !showAudio,
+  // VJ always carries the splat modifier: music shake and transition scatter
+  staticEnvironment: config.staticEnvironment && !showAudio && !config.vj,
   spin: url.get('spin') === '0' || play || config.vj ? 0 : undefined,
   // ?mode=shake — colors and scales stay native; wobble jitter is the only
   // audio response (ruins scenes that must not recolor)
-  shake: url.get('mode') === 'shake' || showAudio,
+  shake: url.get('mode') === 'shake' || showAudio || config.vj,
   // play mode: the explorer owns the camera — orbit/wheel handlers would fight it
   interactive: !play && !config.vj,
   renderSize,
@@ -298,7 +300,12 @@ const stage = config.journey ? createJourney({ canvas, startId: url.get('scene')
 // catalog scenes with no captured sky get the procedural one (W6c)
 if (!url.has('splat') && (url.has('scene') || config.vj)) stage.setSky?.(skyFor(sceneById(url.get('scene'))));
 
+// no show track: the VJ modifier stays still except for transitions
+if (config.vj && !showAudio) stage.setAmplitude?.(0);
+
 let flight = null;
+let lastOnset = 0;
+const stillFrame = createStillFrame({ canvas: document.getElementById('transition-still') });
 let effects = null;
 let switcher = null;
 let audioUi = null;
@@ -321,7 +328,7 @@ if (config.vj) {
     const fadeEl = document.getElementById('scene-fade');
     compositor = createCompositor({ canvas: document.getElementById('composite'),
       sources: [canvas, document.getElementById('hydra-output')], size: renderSize,
-      isFading: () => fadeEl.classList.contains('on') });
+      isFading: () => fadeEl.classList.contains('on'), overlay: stillFrame });
     // output.html (window.opener) picks this up and polls for reconnects
     window.__photolipsiaOutput = compositor;
     consolePanel = createConsolePanel({ table: document.getElementById('control-map'),
@@ -357,7 +364,9 @@ if (config.vj) {
     const autoSpawn = createAutoSpawn({ stage });
     switcher = createSceneSwitcher({ stage, flight, startId: url.get('scene'),
       fade: document.getElementById('scene-fade'), label,
-      onReady: (id) => autoSpawn.forScene(id), skipFirstReady: url.has('view') });
+      onReady: (id) => autoSpawn.forScene(id), skipFirstReady: url.has('view'),
+      still: stillFrame, getType: () => document.getElementById('transition-type').value });
+    document.getElementById('transition-row').hidden = false;
   }
   const speed = document.getElementById('flight-speed');
   speed.addEventListener('input', () => {
@@ -446,6 +455,7 @@ function frameLoop() {
       if (recorder) recorder.add({ ...visible, time: frame.time });
       if (audioUi) stage.setAmplitude(audioUi.splatAmount);
       stage.updateParams(visible, dt);
+      lastOnset = visible.onset;
       effects?.setAudio(audioUi ? audioEffectDrive(visible, audioUi.effectAmount) : null);
       explorer?.updateParams(visible);
 
@@ -458,11 +468,12 @@ function frameLoop() {
     }
     explorer?.update(dt);
     flight?.update(elapsed);
-    switcher?.update();
+    switcher?.update(elapsed, { hasSound: !!audioUi?.live, onset: lastOnset });
     audioUi?.update();
     stage.render(now);
     effects?.render(elapsed, stage.ready && !stage.loadError);
     // same frame as the WebGL renders, before their buffers are presented
+    switcher?.afterRender([canvas, document.getElementById('hydra-output')]);
     compositor?.draw(elapsed);
     consolePanel?.update();
   } catch (err) {

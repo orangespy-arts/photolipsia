@@ -24,7 +24,7 @@ export function createHydraStage({ Hydra, source, output }) {
     detectAudio: false, enableStreamCapture: false, precision: 'highp' });
   const h = hydra.synth;
   let values = { feedback: 0, distortion: 0 }, preset = -1, bound = false, disposed = false;
-  let fx = { levels: { invert: 0, shift: 0, kaleid: 0, mono: 0, pixel: 0, freeze: 0 }, hue: 0 };
+  let fx = { levels: { invert: 0, shift: 0, edge: 0, mono: 0, pixel: 0, freeze: 0 }, hue: 0 };
   let completed = false;
   h.afterUpdate = () => { completed = true; };
   const clear = () => {
@@ -73,7 +73,15 @@ export function createHydraStage({ Hydra, source, output }) {
     const lerp = (a, b, t) => a + (b - a) * t;
     const cells = (full, few) => () => (fx.levels.pixel > 0 ? lerp(full, few, fx.levels.pixel) : 4096);
     h.src(h.o0).pixelate(cells(400, 64), cells(240, 36))
-      .blend(h.src(h.o0).kaleid(4), () => fx.levels.kaleid).out(h.o1);
+      // Y 霓虹描边: neighbour differences = outlines, boosted and tinted a slowly
+      // cycling cyan↔magenta, over a dimmed copy of the frame
+      // (small differences need a plain gain — contrast() pivots on 0.5 and
+      // crushes them to black)
+      .blend(h.src(h.o0).diff(h.src(h.o0).scrollX(0.002))
+        .add(h.src(h.o0).diff(h.src(h.o0).scrollY(0.0035)))
+        .saturate(0)
+        .color(() => 7 * (0.55 + 0.45 * Math.sin(performance.now() / 1400)), 6.5, () => 7 * (0.55 + 0.45 * Math.cos(performance.now() / 1400)))
+        .add(h.src(h.o0).color(0.22, 0.22, 0.26)), () => fx.levels.edge).out(h.o1);
     const split = () => fx.levels.shift * 0.012;
     h.src(h.o1).scrollX(split).color(1, 0, 0)
       .add(h.src(h.o1).color(0, 1, 0))

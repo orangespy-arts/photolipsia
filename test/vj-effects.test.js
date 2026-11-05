@@ -48,7 +48,7 @@ test('release smoothing is frame-rate independent and eventually becomes exact z
 test('ten distinct presets; RB walks all of them one press at a time and wraps', () => {
   assert.equal(EFFECT_NAMES.length, 10);
   assert.equal(new Set(EFFECT_NAMES).size, 10);
-  assert.ok(!EFFECT_NAMES.includes('镜像'), 'kaleid lives on Y, not in presets');
+  assert.ok(!EFFECT_NAMES.includes('镜像'), 'no kaleid preset (removed; Y is neon edge)');
   let state = armed(); const seen = [state.preset];
   for (let i = 0; i < 10; i++) {
     state = advanceEffects(state, pad(0, 0, [5]), 0.1);

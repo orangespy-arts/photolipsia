@@ -14,7 +14,7 @@ test('first frame only arms; a button held at arm time does not toggle', () => {
 
 test('X/Y/Back/L3 toggle on press edge and fade in/out', () => {
   let s = run(fxState(), pad());
-  for (const [name, button] of [['shift', FX_BUTTONS.X], ['kaleid', FX_BUTTONS.Y], ['mono', FX_BUTTONS.BACK], ['pixel', FX_BUTTONS.L3]]) {
+  for (const [name, button] of [['shift', FX_BUTTONS.X], ['edge', FX_BUTTONS.Y], ['mono', FX_BUTTONS.BACK], ['pixel', FX_BUTTONS.L3]]) {
     s = run(s, pad(button)); assert.equal(s.toggles[name], true, name);
     s = run(s, pad(button), 30); assert.equal(s.toggles[name], true, `${name} held stays`);
     s = run(s, pad(), 60); assert.equal(s.levels[name], 1, `${name} faded in`);

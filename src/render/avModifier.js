@@ -24,6 +24,12 @@ export function createAvModifier({ shake = false } = {}) {
   const uTime = dyno.dynoFloat(0, 'avTime');
   // whole-displacement amplitude (keyboard ↑/↓): 0 = no motion at all
   const uAmp = dyno.dynoFloat(1, 'avAmp');
+  // scene transition (W2c): 0 = intact, 1 = every splat flown away and
+  // transparent. Origin = camera position in this mesh's object space.
+  const uScatter = dyno.dynoFloat(0, 'avScatter');
+  const uOx = dyno.dynoFloat(0, 'avOx');
+  const uOy = dyno.dynoFloat(0, 'avOy');
+  const uOz = dyno.dynoFloat(0, 'avOz');
 
   const modifier = dyno.dynoBlock(
     { gsplat: { type: 'Gsplat' } },
@@ -69,12 +75,26 @@ export function createAvModifier({ shake = false } = {}) {
       const wob1 = dyno.sin(dyno.add(dyno.mul(cx, f(3)), dyno.mul(uTime, f(1.7))));
       const wob2 = dyno.sin(dyno.add(dyno.mul(cz, f(3)), dyno.mul(uTime, f(1.3))));
       const driftAmt = dyno.mul(dyno.mul(f(0.08), wobbleGain), uAmp);
+      // ── scatter: fly away from the camera, each splat at its own speed ──
+      // per-splat random 0..1 from its position (classic sin-hash)
+      const rnd = dyno.fract(dyno.mul(dyno.sin(dyno.add(dyno.add(
+        dyno.mul(cx, f(12.9898)), dyno.mul(cy, f(37.719))), dyno.mul(cz, f(78.233)))), f(43758.5453)));
+      const dx = dyno.sub(cx, uOx), dy = dyno.sub(cy, uOy), dz = dyno.sub(cz, uOz);
+      const len = dyno.pow(dyno.add(dyno.add(dyno.add(dyno.mul(dx, dx), dyno.mul(dy, dy)), dyno.mul(dz, dz)), f(1e-6)), f(0.5));
+      const s2 = dyno.mul(uScatter, uScatter);
+      // farther splats travel farther; speed varies 0.5..1.5 per splat
+      const travel = dyno.div(dyno.mul(dyno.mul(s2, dyno.add(f(2), dyno.mul(len, f(0.6)))), dyno.add(f(0.5), rnd)), len);
+      // object space is y-down, so "rise" is -y
+      const rise = dyno.mul(dyno.mul(s2, f(1.2)), dyno.add(f(0.5), rnd));
       const newCenter = dyno.combine({
         vectorType: 'vec3',
-        x: dyno.add(dyno.swizzle(center, 'x'), dyno.mul(wob1, driftAmt)),
-        y: dyno.add(dyno.swizzle(center, 'y'), dyno.mul(dyno.mul(bandEnergy, f(0.5)), driftAmt)),
-        z: dyno.add(dyno.swizzle(center, 'z'), dyno.mul(wob2, driftAmt)),
+        x: dyno.add(dyno.add(dyno.swizzle(center, 'x'), dyno.mul(wob1, driftAmt)), dyno.mul(dx, travel)),
+        y: dyno.sub(dyno.add(dyno.add(dyno.swizzle(center, 'y'), dyno.mul(dyno.mul(bandEnergy, f(0.5)), driftAmt)), dyno.mul(dy, travel)), rise),
+        z: dyno.add(dyno.add(dyno.swizzle(center, 'z'), dyno.mul(wob2, driftAmt)), dyno.mul(dz, travel)),
       });
+      // fade: exactly 0 at scatter 1, splats vanish in a random order
+      const fade = dyno.pow(dyno.clamp(dyno.sub(f(1), uScatter), f(0), f(1)), dyno.add(f(0.5), rnd));
+      const newOpacity = dyno.mul(opacity, fade);
 
       // ── color: centroid → hue rotation, band energy → brightness ──
       // shake mode: rgb passes through untouched — native file colors.
@@ -85,7 +105,7 @@ export function createAvModifier({ shake = false } = {}) {
           x: dyno.swizzle(rgb, 'x'),
           y: dyno.swizzle(rgb, 'y'),
           z: dyno.swizzle(rgb, 'z'),
-          w: opacity,
+          w: newOpacity,
         });
       } else {
         const hueAngle = dyno.mul(dyno.sub(uCentroid, f(0.5)), f(3.14159));
@@ -99,7 +119,7 @@ export function createAvModifier({ shake = false } = {}) {
           x: rp,
           y: gp,
           z: bp,
-          w: opacity,
+          w: newOpacity,
         });
       }
 
@@ -112,7 +132,7 @@ export function createAvModifier({ shake = false } = {}) {
     },
   );
 
-  return { modifier, uniforms: { uLow, uMid, uHigh, uOnset, uCentroid, uTime, uAmp } };
+  return { modifier, uniforms: { uLow, uMid, uHigh, uOnset, uCentroid, uTime, uAmp, uScatter, uOx, uOy, uOz } };
 }
 
 // Hue rotation as pure dyno operators, returning scalar channels — NOT a

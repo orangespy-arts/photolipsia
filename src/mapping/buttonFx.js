@@ -1,13 +1,13 @@
 // Free gamepad buttons → Hydra post layers (W3c). Pure; levels are 0 when
 // off so the post chain is an identity. Standard-layout indices.
 export const FX_BUTTONS = { A: 0, B: 1, X: 2, Y: 3, BACK: 8, L3: 10, R3: 11, LEFT: 14, RIGHT: 15 };
-const TOGGLES = { shift: FX_BUTTONS.X, kaleid: FX_BUTTONS.Y, mono: FX_BUTTONS.BACK, pixel: FX_BUTTONS.L3 };
+const TOGGLES = { shift: FX_BUTTONS.X, edge: FX_BUTTONS.Y, mono: FX_BUTTONS.BACK, pixel: FX_BUTTONS.L3 };
 const HOLDS = { invert: FX_BUTTONS.A, freeze: FX_BUTTONS.R3 };
 export const HUE_RATE = 0.2; // turns per second while ← / → is held
-export const FX_LABELS = { invert: '闪白', shift: '色彩分离', kaleid: '万花筒', mono: '黑白', pixel: '像素化', freeze: '冻结' };
+export const FX_LABELS = { invert: '闪白', shift: '色彩分离', edge: '霓虹描边', mono: '黑白', pixel: '像素化', freeze: '冻结' };
 
-const zeroLevels = () => ({ invert: 0, shift: 0, kaleid: 0, mono: 0, pixel: 0, freeze: 0 });
-export const fxState = () => ({ armed: false, prev: [], toggles: { shift: false, kaleid: false, mono: false, pixel: false },
+const zeroLevels = () => ({ invert: 0, shift: 0, edge: 0, mono: 0, pixel: 0, freeze: 0 });
+export const fxState = () => ({ armed: false, prev: [], toggles: { shift: false, edge: false, mono: false, pixel: false },
   levels: zeroLevels(), hue: 0 });
 
 const pressed = (pad, i) => pad.buttons?.[i]?.pressed === true;

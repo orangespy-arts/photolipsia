@@ -218,7 +218,8 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
     // the mesh version changes; uniform edits alone do not trigger it.
     // At amplitude 0 the modifier is an identity, so skip the regeneration
     // cost once the mesh has been regenerated at 0 a single time.
-    if (av.uniforms.uAmp.value > 0 || ampSettled !== splat) { splat.updateVersion(); ampSettled = av.uniforms.uAmp.value > 0 ? null : splat; }
+    const moving = av.uniforms.uAmp.value > 0 || av.uniforms.uScatter.value > 0;
+    if (moving || ampSettled !== splat) { splat.updateVersion(); ampSettled = moving ? null : splat; }
 
     // gentle whole-object scale remains (Stage 1 behavior, now secondary
     // to the per-splat region response); multiplies the ?tf= base scale.
@@ -260,6 +261,18 @@ export function createSplatStage({ canvas, splatUrl, view, spin, tf, shake = fal
       return out.subarray(0, n);
     },
     // music-motion amplitude for the splat displacement (no-op when static)
+    // transition scatter (0..1) away from the camera; regenerated each frame
+    // while non-zero (see updateParams), and once more when it returns to 0
+    setScatter(value) {
+      if (!av) return;
+      const v = Math.max(0, Math.min(1, value || 0));
+      if (v === av.uniforms.uScatter.value && v === 0) return;
+      av.uniforms.uScatter.value = v; ampSettled = null;
+      const local = splat.worldToLocal(camera.getWorldPosition(new THREE.Vector3()));
+      av.uniforms.uOx.value = local.x; av.uniforms.uOy.value = local.y; av.uniforms.uOz.value = local.z;
+      // updateParams early-returns while loading; keep the new mesh in sync
+      splat.updateVersion();
+    },
     setAmplitude(value) {
       if (!av || av.uniforms.uAmp.value === value) return;
       av.uniforms.uAmp.value = value; ampSettled = null;
