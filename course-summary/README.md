@@ -1,12 +1,12 @@
-# Photolipsia — A Gaussian-Splat VJ Journey from Ruin to Rebirth
+# Photolipsia: Playing Generated Gaussian-Splat Worlds as a Live VJ Instrument
 
 *Course documentation · ZHdK MA Interaction Design · Agentic Coding · Zhanlan · Oct–Nov 2026*
 
-![Rebirth Garden — the final scene](media/jpg/s10-rebirth-garden.jpg)
+![Rebirth Garden, the final scene](media/jpg/s10-rebirth-garden.jpg)
 
-**Photolipsia** is a real-time audiovisual performance. Ten Gaussian-splat scenes form one journey from a cold, inorganic ruin to an overgrown garden. I fly through them live with a game controller while the music drives the splats, and I layer Hydra-style video effects on top. The project ended in a **10-minute live performance**.
+**Photolipsia** turns ten Gaussian-splat worlds, generated with **Marble** (World Labs), into an instrument for a live audiovisual performance. Music moves each splat individually on the GPU, Hydra effects reshape the same image in real time, and one game controller handles both the camera flight and the effects. The ten scenes form one arc from a cold, inorganic ruin to an overgrown garden. I played the instrument in a **10-minute live performance**.
 
-> ▶ **Performance video:** *[insert link or embedded video here]*
+> ▶ **Performance video:** <https://youtu.be/71Y-s4JzuZc>
 
 ---
 
@@ -14,15 +14,15 @@
 
 ### Starting point
 
-*Photolipsia* was the course theme. I approached it through my own artistic practice: I make work by **combining natural and mechanical elements**, and **VJing is one of my main media**. So I asked:
+*Photolipsia* was the course theme. I approached it through my own artistic practice, in which I **combine natural and mechanical elements** and use **VJing as one of my main media**. The project starts from one question:
 
 > What happens when a captured 3D space turns into a VJ instrument, and the machine slowly turns into nature as the music plays?
 
 ### Why Gaussian splats, music and VJ
 
-- **Gaussian splatting** turns a scene into millions of small soft points instead of hard surfaces. The points can breathe, shake and dissolve with sound, which hard geometry can't do as easily.
-- **Music** is the score. One continuous track runs through the whole piece, so the ten scenes feel like a single set rather than ten separate demos.
-- **VJing** keeps it live. I wanted a performance I could play in the moment, not a pre-rendered video.
+- **Gaussian splatting** represents a scene as millions of small soft points. I generated every scene in the piece with Marble and exported it as a PLY file, which the instrument loads and renders directly. Each point can breathe, shake and dissolve with sound, which hard surface geometry cannot do as easily.
+- **Music** is the score. One continuous track runs through the whole piece and holds the ten scenes together as a single set.
+- **VJing** keeps the piece live. Every camera move and every effect is played in the moment.
 
 ### The narrative arc
 
@@ -68,69 +68,71 @@ The ten scenes follow one arc: **inorganic → life → fusion → rebirth**. Pl
 
 ## 2. The Process
 
-I worked with an AI coding agent, following the course's agentic workflow. I did the planning, the decisions, the checking and all hands-on testing. The agent wrote the code. Every step was first written as a plan in [`ai/strategy.md`](../ai/strategy.md) and only built after I said "go"; every session was logged in [`ai/log.md`](../ai/log.md) (both in Chinese). Those two files, plus the logs in the Unity repository, are the full record of the experiments below.
+Four prototypes answered the four design questions behind the instrument. They settled how sound acts on the splats, how the performer moves through a scene, which platform carries Hydra together with the splats, and how one person controls everything at once. Each answer became part of the final instrument.
 
-### Phase 1 — A generic audio-visual splat engine (web, 26 Oct)
+I developed the project with an AI coding agent, following the workflow of the *Agentic Coding* course. I planned each step, made the decisions and tested every result by hand, and the agent wrote the code. Every step was written as a plan in [`ai/strategy.md`](../ai/strategy.md) and built only after I approved it with "go". Every session is logged in [`ai/log.md`](../ai/log.md). Both files are in Chinese and, together with the logs in the Unity repository, document every experiment described below.
 
-I started in the browser with **three.js + Spark**, a Gaussian-splat renderer, and built the system in small stages:
+### Prototype 1: sound acting on each splat (web, 26 Oct)
 
-- **Stage 1:** render a test splat and make it breathe.
-- **Stage 2:** move the deformation onto the GPU, so each splat reacts to the audio on its own (ripples, surface waves, brightness pulses) instead of the whole object scaling.
-- **Stages 3–5:** three ways to drive it: live audio (mic or file) analysed in the browser, OSC (so Max/MSP, SuperCollider or PD can drive it), and MIDI.
-- **Stages 6–7:** record and replay parameter streams, and harden the system for performance.
+The first prototype runs in the browser with **three.js and Spark**, a Gaussian-splat renderer, and was built in seven stages:
 
-The key design decision was **one protocol** (`AVParams`: loudness, low/mid/high bands, centroid, onset, beat phase). The visuals only read this protocol and never care where the sound comes from.
+- **Stage 1:** a test splat breathes with a synthetic signal.
+- **Stage 2:** the deformation moves to the GPU, so each splat reacts to the audio individually with ripples, surface waves and brightness pulses.
+- **Stages 3–5:** three input sources drive it: live audio (microphone or file) analysed in the browser, OSC from Max/MSP, SuperCollider or PD, and MIDI.
+- **Stages 6–7:** parameter streams can be recorded and replayed, and the system is hardened for performance.
+
+All visuals read a single protocol, **`AVParams`** (loudness, low/mid/high bands, centroid, onset, beat phase), and never depend on where the sound comes from. A new sound source therefore needs only a new driver, and the visuals stay unchanged.
 
 <table>
 <tr>
-<td><img src="media/process/p1-stage1-mock-breathing.jpg" alt="Stage 1"><br><sub>Stage 1 — test splat breathing on a synthetic signal</sub></td>
-<td><img src="media/process/p2-stage2-gpu-deform.jpg" alt="Stage 2"><br><sub>Stage 2 — per-splat GPU deformation</sub></td>
+<td><img src="media/process/p1-stage1-mock-breathing.jpg" alt="Stage 1"><br><sub>Stage 1: test splat breathing on a synthetic signal</sub></td>
+<td><img src="media/process/p2-stage2-gpu-deform.jpg" alt="Stage 2"><br><sub>Stage 2: per-splat GPU deformation</sub></td>
 </tr>
 <tr>
-<td><img src="media/process/p3-stage3-web-audio.jpg" alt="Stage 3"><br><sub>Stage 3 — driven by real audio</sub></td>
-<td><img src="media/process/p4-stage4-osc-bridge.jpg" alt="Stage 4"><br><sub>Stage 4 — driven over OSC from an external program</sub></td>
+<td><img src="media/process/p3-stage3-web-audio.jpg" alt="Stage 3"><br><sub>Stage 3: driven by real audio</sub></td>
+<td><img src="media/process/p4-stage4-osc-bridge.jpg" alt="Stage 4"><br><sub>Stage 4: driven over OSC from an external program</sub></td>
 </tr>
 </table>
 
-### Phase 2 — Exploring real scans: a glass ball that grows plants (27–30 Oct)
+### Prototype 2: moving through a generated world (27–30 Oct)
 
-Next I loaded my first real scan, a ruin hall, and tried a game-like mode. A **transparent glass ball** rolls through the ruin, and **leaves and stems grow wherever it passes**. This was my first literal version of "machine turning into nature". I then added a **particle portal** that carries the ball from the ruin into a second scan, a zombie city.
+The second prototype loads the first full Marble world, a ruin hall. A **transparent glass ball** rolls through it. **Leaves and stems grow wherever the ball passes**, which gave the theme of machine turning into nature its first literal form. A **particle portal** then carries the ball from the ruin into a second Marble world, a zombie city.
 
 <table>
 <tr>
-<td><img src="media/process/p5-ruin-hall-shake.jpg" alt="Ruin hall"><br><sub>First real scan: the ruin hall, shaking with sound</sub></td>
+<td><img src="media/process/p5-ruin-hall-shake.jpg" alt="Ruin hall"><br><sub>First Marble world: the ruin hall, shaking with sound</sub></td>
 <td><img src="media/process/p6-glass-ball-zombie-city.jpg" alt="Glass ball in the zombie city"><br><sub>The glass ball in the zombie city, after the portal</sub></td>
 </tr>
 </table>
 
-**What I learned:** walking with a ball felt like a game, not a performance. Steering the ball took all my attention, and there was nothing left for the music.
+Steering the ball took the performer's full attention and left none for the music. This finding set the requirement for the final control scheme: movement and effects must share one controller and leave the performer free to follow the music.
 
-### Phase 3 — Detour: moving to Unity (early Nov)
+### Prototype 3: the engine comparison in Unity (early Nov)
 
-To get a clean, editable ten-scene piece, I tried moving the project to **Unity (URP) with the UnityGaussianSplatting package**:
+The third prototype tested whether a game engine could carry an editable ten-scene piece. It runs in **Unity (URP) with the UnityGaussianSplatting package** and covers the full show structure:
 
-- I got the first scan rendering (1,920,000 splats) and a whole-object "breathing" prototype reacting to the music.
-- I built a Timeline camera move, then switched to free walking so I could record directly.
-- I built a ten-scene structure with one continuous music track and scene switching, plus game-controller flight.
-- I tried a beat-triggered **dust particle** effect. I didn't like it, so I dropped it. I wanted the effect to happen *in the splats themselves*, not on top of them.
-- Because Hydra couldn't run inside Unity, I started rebuilding a Hydra-style effect system in Unity shaders (about 34 functions plus a small compiler).
+- the first scene rendered at 1,920,000 splats, with a whole-object "breathing" prototype that reacts to the music;
+- a Timeline camera move, followed by free walking for direct recording;
+- ten scenes with one continuous music track, scene switching and game-controller flight;
+- a beat-triggered **dust particle** effect, which tested effects placed on top of the scene;
+- a Hydra-style effect system in Unity shaders, with 34 hand-written functions and a small compiler.
 
 ![Unity version, entrance scene](media/process/p7-unity-entrance.jpg)
-<sub>Unity version — the entrance scene rendered with UnityGaussianSplatting</sub>
+<sub>Unity version: the entrance scene rendered with UnityGaussianSplatting</sub>
 
-**Why I abandoned Unity:** Hydra is built on WebGL/GLSL, and **Unity's rendering could not connect to Hydra**. I could only imitate it by rewriting every effect by hand, and I would lose the thing I wanted most: Hydra itself, live, as part of my VJ practice. The Unity package also didn't let me move individual splats, so the per-splat audio deformation I already had on the web was gone. I went back to the browser, where splats and Hydra share the same canvas.
+The comparison decided the platform. Hydra is built on WebGL/GLSL, and **Unity's rendering cannot connect to Hydra**, so in Unity every effect would have to be rewritten by hand, while Hydra itself, live, is part of my VJ practice. The Unity package also does not expose individual splat positions, which rules out the per-splat audio deformation from Prototype 1. The dust particle test led to the same choice from the visual side, because the effects I wanted act in the splats themselves. The final instrument therefore runs in the browser, where the splats and Hydra share one canvas.
 
-### Phase 4 — Back to the web: a controller-driven VJ instrument (4–5 Nov)
+### Prototype 4: the controller-driven VJ instrument (4–5 Nov)
 
-Back on the web I rebuilt the piece as a **live VJ instrument**:
+The fourth prototype combines the three results into the **live VJ instrument**:
 
-1. **Controller test page** to check that the browser reads every stick, trigger and button.
+1. A **controller test page** checks that the browser reads every stick, trigger and button.
 2. **Free flight** with an Xbox controller: the left stick moves, the right stick looks around, the D-pad rises and falls.
 3. **Hydra (hydra-synth 1.4.0)** runs on the same canvas as the splats. LT controls feedback trails, RT controls the current preset's strength, and LB/RB switch presets.
-4. **The ten scenes** replace the two test scans. Start moves to the next scene; the transition waits for the next strong beat (up to 1 second) and uses either a freeze-dissolve or a particle scatter.
-5. **Music link**: the show track drives splat motion and effect strength; I can switch to a live microphone, pick another track or scrub through it.
-6. **Ten effect presets**, plus single-button layers: flash, RGB split, neon edge, black-and-white, hue shift, pixelate, freeze.
-7. **Dual-screen setup**: a control console on the laptop and a clean output window on the projector.
+4. **The ten scenes** replace the two test worlds. Start moves to the next scene, and the transition waits for the next strong beat (up to 1 second) and uses either a freeze-dissolve or a particle scatter.
+5. A **music link** lets the show track drive splat motion and effect strength. The performer can switch to a live microphone, pick another track or scrub through it.
+6. **Ten effect presets** are joined by button-triggered effects: flash, RGB split, neon edge, black-and-white, hue shift, pixelate and freeze.
+7. A **dual-screen setup** puts a control console on the laptop and a clean output window on the projector.
 
 <img src="media/process/p8-web-vj-panel-early.jpg" alt="Early web VJ panel">
 <sub>Early version of the web VJ panel (Chinese UI) in the Machine Hall</sub>
@@ -139,9 +141,11 @@ Back on the web I rebuilt the piece as a **live VJ instrument**:
 
 ## 3. The End Result
 
-The final piece is a **10-minute live VJ performance**. A single continuous music track plays while I fly through all ten scenes with a controller, play the Hydra effects on top, and move from ruin to garden.
+The final piece is a **10-minute live VJ performance**. A single continuous music track plays while I fly through all ten scenes with one controller and play the Hydra effects on top, moving from ruin to garden.
 
-> ▶ **Performance video:** *[insert link or embedded video here]*
+[![Watch the Photolipsia live performance on YouTube](media/jpg/fx-vortex-machine-hall.jpg)](https://youtu.be/71Y-s4JzuZc)
+
+▶ **Watch the full 10-minute performance on YouTube:** <https://youtu.be/71Y-s4JzuZc>
 
 ### Hydra effects on the splat scenes
 
@@ -167,7 +171,7 @@ The final piece is a **10-minute live VJ performance**. A single continuous musi
 ### The performance console
 
 ![Dual-screen console](media/jpg/console-dual-screen.jpg)
-<sub>Laptop console: output preview and live key map on the left; scene, music, effect and flight panels on the right. A separate window sends the clean image to the projector.</sub>
+<sub>Laptop console with the output preview and live key map on the left and the scene, music, effect and flight panels on the right. A separate window sends the clean image to the projector.</sub>
 
 ### Controller mapping
 
@@ -187,7 +191,8 @@ The final piece is a **10-minute live VJ performance**. A single continuous musi
 
 ### Technical summary
 
-- **Rendering:** three.js 0.186 + Spark 2.4 (Gaussian splats), ten PLY scans (~130 MB each)
+- **Scenes:** ten Gaussian-splat worlds generated with Marble (World Labs), exported as PLY (~130 MB each)
+- **Rendering:** three.js 0.186 + Spark 2.4 (Gaussian splats)
 - **Effects:** hydra-synth 1.4.0 on the same canvas
 - **Audio:** Web Audio analysis → `AVParams` protocol (also supports OSC and MIDI)
 - **Input:** Gamepad API, Xbox controller
@@ -195,17 +200,17 @@ The final piece is a **10-minute live VJ performance**. A single continuous musi
 
 ---
 
-## 4. Reflection
+## 4. Findings
 
-- **Choose the medium for the practice, not the polish.** Unity promised a cleaner pipeline, but it cut me off from Hydra, which is part of how I perform. Going back to the web was the right call.
-- **Effects belong in the material.** The dust particles and the whole-object scaling both felt like decoration. The splats moving and dissolving with sound, and Hydra reshaping the image, felt like the scene itself reacting.
-- **A game isn't a performance.** The glass-ball mode was fun but took all my attention. Free flight plus effects on one controller let me play the music.
-- **Working with an agent.** Writing a plan before each step and logging every session made the many changes of direction manageable. It also kept a record of why each decision was made.
+- **The platform follows the practice.** Hydra is part of how I perform, so the instrument runs where Hydra and the splats share one canvas. The browser provides that canvas together with per-splat deformation.
+- **Effects act in the material.** Sound moves and dissolves the splats themselves, and Hydra reshapes the image they form, so the scene itself reacts to the music.
+- **One controller leaves room for the music.** Free flight and all effects sit on a single controller, which lets one performer play camera, image and transitions in time with the track.
+- **Plan-first work with an agent.** A written plan before each step and a log after each session kept every change of direction traceable, including the reason for each decision.
 
 ### Next steps
 
 - Per-scene camera paths and calibrated starting points
-- Bringing the plant growth from Phase 2 into the performance scenes
+- Bringing the plant growth from Prototype 2 into the performance scenes
 - Live OSC input from music software for performances with other musicians
 
 ---
@@ -213,5 +218,5 @@ The final piece is a **10-minute live VJ performance**. A single continuous musi
 ## Links
 
 - Web version (final, this repository): [README](../README.md) · <https://github.com/orangespy-arts/photolipsia>
-- Unity attempt (archived): <https://github.com/orangespy-arts/guassian-splating-unity>
+- Unity prototype: <https://github.com/orangespy-arts/guassian-splating-unity>
 - Course kit: <https://github.com/xohm/photolipsia-agentic-kit>

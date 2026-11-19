@@ -2,10 +2,11 @@
 
 ![Rebirth Garden](course-summary/media/jpg/s10-rebirth-garden.jpg)
 
-**Photolipsia** is a real-time audiovisual VJ instrument built on Gaussian splatting. Ten scanned scenes form one journey from a cold ruin to an overgrown garden (**inorganic → life → fusion → rebirth**). The performer flies through them live with a game controller while the music moves the splats and Hydra effects reshape the image. It was used for a **10-minute live performance**.
+**Photolipsia** is a real-time audiovisual VJ instrument built on Gaussian splatting. Ten Gaussian-splat worlds, generated with Marble (World Labs), form one journey from a cold ruin to an overgrown garden (**inorganic → life → fusion → rebirth**). The performer flies through them live with a game controller while the music moves the splats and Hydra effects reshape the image. It was used for a **10-minute live performance**.
 
 The project comes from my artistic practice, which combines natural and mechanical elements, with VJing as one of my main media.
 
+- **Performance video (10 min):** <https://youtu.be/71Y-s4JzuZc>
 - **Course documentation (idea, process, result):** [course-summary/README.md](course-summary/README.md)
 - **Archived Unity attempt:** <https://github.com/orangespy-arts/guassian-splating-unity>
 
@@ -100,7 +101,7 @@ The visuals only depend on the protocol, never on where the sound comes from. Ad
 
 Docs: [protocol](docs/protocol.md) · [architecture](docs/architecture.md) · [VJ controls](docs/vj-controls.md) · [rehearsal](docs/rehearsal.md) · [navigation](docs/navigation.md) · [start guide (Chinese)](START.md)
 
-Stack: three.js 0.186 · Spark 2.4 · hydra-synth 1.4.0 · Web Audio / Web MIDI / Gamepad APIs.
+Scenes: generated with Marble (World Labs), exported as PLY. Stack: three.js 0.186 · Spark 2.4 · hydra-synth 1.4.0 · Web Audio / Web MIDI / Gamepad APIs.
 
 ## How it was made
 

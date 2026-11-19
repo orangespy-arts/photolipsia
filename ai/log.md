@@ -2,6 +2,19 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-19 — 注明场景由 Marble 生成
+
+- 用户确认所有场景都是用 Marble（World Labs）生成的，包括十个演出场景和早期的废墟大厅、僵尸城。原文里把它们叫作 "scan"（扫描），这不准确。README 和 course-summary/README.md 里的相关说法都已改成 Marble 生成的 Gaussian-splat world，并在 Idea 部分和技术栈里注明了来源。效果预设名 "Scan glitch" 没有改。未提交。
+
+## 2026-11-19 — 课程总结插入演出视频
+
+- 用户提供了 YouTube 链接 https://youtu.be/71Y-s4JzuZc。用它替换了两处视频占位：开头放文字链接；End Result 放一张可点击的封面（用 media/jpg/fx-vortex-machine-hall.jpg）和文字链接。oEmbed 确认视频是公开的，标题为 "Gaussian Splat VJ"。i.ytimg.com 的缩略图在这里返回 404，所以没有用它做封面。按用户要求，主 README 开头的链接列表里也加了这个视频链接。未提交。
+
+## 2026-11-19 — 课程总结按两个写作 skill 改写
+
+- 用户要求用 anti-defensive-writing-en 和 academic-humanizer 两个 skill 重写 course-summary/README.md。老师要求写出“过程，包括实验和中途改变”，所以 Process 一节保留，改为四个原型，每个回答一个设计问题，并说明它对最终乐器的贡献；删掉了自我否定的措辞（detour、abandoned、didn't like 等）。开头改为先讲成果；Reflection 改为 Findings；去掉所有破折号，替换掉了没有定义的标签（agentic workflow、splat engine、cleaner pipeline、single-button layers），也去掉了“不是 X 而是 Y”式的对比句。
+- 没有新增事实、数字或链接。compare 脚本结果：数字只多了一处“Prototype 1”的编号；4 处被删的 could 不表示真实的不确定性；破折号 11→0；图片和链接全部存在。npm test 220/220 通过。未提交。
+
 ## 2026-11-19 — 课程总结从 Unity 仓库搬到本仓库
 
 - 用户要求把课程总结搬到主仓库，并删除 Unity 仓库里的原文件、改成链接。新增 course-summary/README.md，以及 media/jpg（场景、效果、控制台图）和 media/process（早期阶段图），共 6.6MB。PNG 原图（73MB）没有搬过来。
