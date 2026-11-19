@@ -2,6 +2,12 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-19 — README 改为英文（课程总结配套）
+
+- 用户要求把 README 改成英文。重写 README.md：说明最终是 10 分钟手柄 VJ 演出，列出功能、快速开始、首页入口（按 index.html 实际英文标签）、手柄键位、架构与目录，并链接课程总结和已放弃的 Unity 仓库。新增 docs/media/ 下 5 张 JPG（共 1.4MB），图片来自课程总结的截图。没有改代码。
+- 违规说明：截图是在 guassian-splating-unity 会话里做的。当时 agent 没先读本仓库 AGENTS.md，就从工具调用启动了 `npm run dev`，违反了“不要从 agent 启动长期服务器”这条规则。服务器只用来截图（`?vj=1&scene=sXX`，用效果预览按钮），没有改本仓库文件，会话结束时已停止。以后应由用户启动服务器。
+- 验证：npm test 220/220 通过；git diff --check 通过；README 中所有本地链接对应的文件都存在。GitHub 上的渲染效果没看过。未提交。
+
 ## 2026-11-05 — 控制台界面换英文
 
 - 用户要求"把工作台的语言换成英文"，澄清为 VJ 控制台 UI。范围：VJ 页全部面板（index.html 入口/飞行/音乐/效果面板）、键位表 controlMap、场景名 sceneCatalog、十种预设名 EFFECT_NAMES、按键效果标签 FX_LABELS、转场标签、飞行状态行 flightController、场景切换状态行 sceneSwitcher、音乐面板 showAudio、麦克风归约器文案 inputMode、输出窗口 output.html/output.js、手柄检测页 gamepad.html/gamepadMonitor、webaudio 驱动面向用户的错误文案。旧探索模式（journey）与项目文档保持中文。

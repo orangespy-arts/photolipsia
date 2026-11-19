@@ -1,67 +1,115 @@
-# Photolipsia — 高斯泼溅音画可视化器
+# Photolipsia — Gaussian-Splat VJ Performance
 
-一个**通用的** Gaussian Splatting 音画互动 visualizer：不绑定任何 DSP 来源，
-任何能发声或能分析声音的系统都可以驱动它跳动。
+![Rebirth Garden](docs/media/s10-rebirth-garden.jpg)
 
-```
-                    ┌─ Driver: web-audio（麦克风 / 音频文件 / 屏幕声音，浏览器内分析）
-任意 DSP 源 ──→  AVParams 协议（唯一契约）──→ mapping（纯函数）──→ splat 渲染
-                    ├─ Driver: osc（WebSocket ← UDP 桥 ← Max/MSP·SuperCollider·PD）
-                    ├─ Driver: midi（Web MIDI API：note/CC/clock）
-                    └─ Driver: mock（合成信号 + 参数流回放）
-```
+**Photolipsia** is a real-time audiovisual VJ instrument built on Gaussian splatting. Ten scanned scenes form one journey from a cold ruin to an overgrown garden (**inorganic → life → fusion → rebirth**). The performer flies through them live with a game controller while the music moves the splats and Hydra effects reshape the image. It was used for a **10-minute live performance**.
 
-核心原则：**visualizer 只认协议，不认来源**。接一个新 DSP = 写一个新驱动器，
-visualizer 本体永远不动。
+The project comes from my artistic practice, which combines natural and mechanical elements, with VJing as one of my main media.
 
-## 效果
+- **Course documentation (idea, process, result):** <https://github.com/orangespy-arts/guassian-splating-unity/blob/main/course-summary/README.md>
+- **Archived Unity attempt:** <https://github.com/orangespy-arts/guassian-splating-unity>
 
-**Stage 1 — 渲染基础**（`ai/stage1.png`）：测试 splat 全屏渲染，
-mock 驱动下整体呼吸。
+<table>
+<tr>
+<td><img src="docs/media/s04-machine-hall.jpg" alt="Machine Hall"><br><sub>Machine Hall, clean</sub></td>
+<td><img src="docs/media/fx-vortex-machine-hall.jpg" alt="Vortex effect"><br><sub>Machine Hall with the Vortex preset</sub></td>
+</tr>
+<tr>
+<td><img src="docs/media/fx-tunnel-mycelium.jpg" alt="Tunnel effect"><br><sub>Mycelium Greenhouse with the Tunnel preset</sub></td>
+<td><img src="docs/media/console-dual-screen.jpg" alt="Console"><br><sub>Dual-screen performance console</sub></td>
+</tr>
+</table>
 
-![Stage 1](ai/stage1.png)
+## Features
 
-**Stage 2 — per-splat GPU 音频变形**（`ai/stage2.png`）：同一测试 splat，
-音频驱动进 GPU dyno graph 后——圆环随波动扭曲、表面起伏、亮度随频段能量脉动。
-对比 Stage 1 的静止圆环即可看出 per-splat 位移在工作。
+- **Ten splat scenes:** Ruin Entrance, Empty City, Underground Pass, Machine Hall, Underwater Atrium, Mycelium Greenhouse, Crystal Rift, Mutated Temple, Cloud Ruins, Rebirth Garden.
+- **Controller free flight:** left stick moves, right stick looks, D-pad rises and descends. An automatic start point is found for each scene.
+- **Hydra effects** (hydra-synth 1.4.0) on the same canvas as the splats: 10 presets (Echo, Ripple, Vortex, Tunnel, Scan glitch, Strobe, Posterize, Print, Split, Melt) plus button layers (flash, RGB split, neon edge, mono, hue, pixelate, freeze).
+- **Music link:** the show track drives splat motion and effect strength. You can switch to a live microphone, pick any local audio file and scrub the track.
+- **Beat-synced scene changes:** Start goes to the next scene. The change waits for the next strong beat (up to 1 s) and uses a freeze-dissolve or a particle scatter.
+- **Dual-screen mode:** a laptop console with a live key map, plus a clean output window for the projector.
+- **Generic audio protocol:** visuals only read `AVParams` (loudness, bands, centroid, onset, beat phase), so any source can drive them: Web Audio, OSC (Max/MSP, SuperCollider, PD), MIDI, or a recorded parameter stream.
 
-![Stage 2](ai/stage2.png)
+## Quick start
 
-## 快速开始
+Requires Node.js.
 
 ```sh
-npm test        # 单元测试（node:test，零依赖）
-npm run check   # 冒烟检查
-npm run dev     # 本地静态服务器 → http://localhost:5175
+npm ci          # install dependencies (first time)
+npm test        # unit tests
+npm run check   # tests + module import smoke check
+npm run dev     # local server → http://localhost:5175
 ```
 
-页面用 URL 参数选驱动器：`http://localhost:5175/?driver=mock`
-（目前只有 `mock` 可用，其余见 Roadmap）。
+Open <http://localhost:5175/> and choose an entry:
 
-## 目录结构
+| Entry | Use |
+|---|---|
+| Dual-screen show · Console | Laptop console + external output window |
+| Single-screen show · Music | One window, default show track built in |
+| Gamepad VJ · Free flight | Picture and controller only, no music |
+| Gamepad test | Check stick, trigger and button readings |
+| Explore · Particle Portal | Earlier explorer mode (glass ball, growing plants, portal) |
+
+Useful URLs: `/?vj=1&scene=s01&audio=show&console=1` (console), `&perform=1` (hide the UI), `&res=1280x720` (lower render load), `&hydra=0` (no effects).
+
+### Local assets (not in git)
+
+- Scenes: `3dscene/ruin1.ply` to `ruin10.ply` (about 130 MB each)
+- Default show track: `audio/5songDJ.wav`. Without it, use "Pick music file" in the music panel.
+
+## Controller mapping
+
+| Input | Action |
+|---|---|
+| Left stick / right stick | Move / look |
+| D-pad ↑ ↓ | Rise / descend |
+| D-pad ← → | Hue back / forward |
+| LT | Feedback trails |
+| RT | Strength of current preset |
+| LB / RB | Previous / next preset |
+| Start | Next scene |
+| A (hold) | White flash |
+| X / Y / Back | RGB split / neon edge / black-and-white |
+| L3 / R3 | Pixelate / freeze |
+| B | Clear all effects |
+
+Keyboard: Space play/pause, ↑/↓ particle amplitude, ←/→ effect sync, H hide console, F fullscreen. Full details: [docs/vj-controls.md](docs/vj-controls.md).
+
+## Architecture
 
 ```
-AGENTS.md            agent 规则（plan → build → introspect → fix → log）
-ai/strategy.md       计划 / 决策 / Next（agent 的记忆，每次任务先读它）
-ai/log.md            开发日志，一次工作一段（新的在上）
-docs/protocol.md     AVParams 协议规范 ★ 系统的 API 契约
-docs/architecture.md 架构与 Roadmap
-docs/course-notes.md 与 photolipsia-agentic-kit 课程的关系
-src/protocol/        协议定义与校验
-src/drivers/         各来源驱动器（统一接口）
-src/dsp/             可单测的 DSP 纯函数（频段能量 / 质心 / 平滑…）
-src/mapping/         协议 → 视觉参数（纯函数）
-src/ui/              debug monitor
-scripts/             dev 服务器 / check 脚本
-test/                单元测试
+any DSP source ──→ driver ──→ AVParams protocol ──→ mapping (pure functions) ──→ splat render ──→ Hydra
+   web-audio · osc · midi · mock · playback
 ```
 
-## 工作方式
+The visuals only depend on the protocol, never on where the sound comes from. Adding a new source means writing a new driver.
 
-本项目借鉴 [photolipsia-agentic-kit](https://github.com/xohm/photolipsia-agentic-kit)
-（ZHdK Agentic Coding 课程）的工作流：人负责规划、决策、检查；agent 负责写代码。
-每次改动必须过 `npm test`，每段工作在 `ai/log/` 留档，决策记录在 `ai/strategy.md`。
+| Path | Contents |
+|---|---|
+| `src/protocol/` | Protocol definition and validation |
+| `src/drivers/` | Audio sources (web-audio, OSC, MIDI, mock, playback) |
+| `src/mapping/` | Pure functions: audio → visuals, effects, transitions |
+| `src/render/` | Spark splat stage, flight, explorer, Hydra stage |
+| `src/input/` | Gamepad input |
+| `src/ui/` | Console, panels, monitor |
+| `src/rec/` | Parameter recording and playback |
+| `scripts/` | Dev server, checks, probes |
+| `test/` | Unit tests (`node:test`) |
 
-## 状态
+Docs: [protocol](docs/protocol.md) · [architecture](docs/architecture.md) · [VJ controls](docs/vj-controls.md) · [rehearsal](docs/rehearsal.md) · [navigation](docs/navigation.md) · [start guide (Chinese)](START.md)
 
-Stage 0（骨架）已完成，Roadmap 见 `ai/strategy.md`。
+Stack: three.js 0.186 · Spark 2.4 · hydra-synth 1.4.0 · Web Audio / Web MIDI / Gamepad APIs.
+
+## How it was made
+
+Built for the ZHdK MA Interaction Design course *Agentic Coding*, following the workflow of [photolipsia-agentic-kit](https://github.com/xohm/photolipsia-agentic-kit). I did the planning, decisions and testing; a coding agent wrote the code. Each step was planned in `ai/strategy.md` before it was built, every change had to pass `npm test`, and every session is logged in `ai/log.md` (both in Chinese). Agent rules are in [AGENTS.md](AGENTS.md).
+
+### Early stages
+
+<table>
+<tr>
+<td><img src="ai/stage1.png" alt="Stage 1"><br><sub>Stage 1 — first splat breathing</sub></td>
+<td><img src="ai/stage2.png" alt="Stage 2"><br><sub>Stage 2 — per-splat GPU audio deformation</sub></td>
+</tr>
+</table>
