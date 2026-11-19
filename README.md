@@ -1,22 +1,22 @@
 # Photolipsia — Gaussian-Splat VJ Performance
 
-![Rebirth Garden](docs/media/s10-rebirth-garden.jpg)
+![Rebirth Garden](course-summary/media/jpg/s10-rebirth-garden.jpg)
 
 **Photolipsia** is a real-time audiovisual VJ instrument built on Gaussian splatting. Ten scanned scenes form one journey from a cold ruin to an overgrown garden (**inorganic → life → fusion → rebirth**). The performer flies through them live with a game controller while the music moves the splats and Hydra effects reshape the image. It was used for a **10-minute live performance**.
 
 The project comes from my artistic practice, which combines natural and mechanical elements, with VJing as one of my main media.
 
-- **Course documentation (idea, process, result):** <https://github.com/orangespy-arts/guassian-splating-unity/blob/main/course-summary/README.md>
+- **Course documentation (idea, process, result):** [course-summary/README.md](course-summary/README.md)
 - **Archived Unity attempt:** <https://github.com/orangespy-arts/guassian-splating-unity>
 
 <table>
 <tr>
-<td><img src="docs/media/s04-machine-hall.jpg" alt="Machine Hall"><br><sub>Machine Hall, clean</sub></td>
-<td><img src="docs/media/fx-vortex-machine-hall.jpg" alt="Vortex effect"><br><sub>Machine Hall with the Vortex preset</sub></td>
+<td><img src="course-summary/media/jpg/s04-machine-hall.jpg" alt="Machine Hall"><br><sub>Machine Hall, clean</sub></td>
+<td><img src="course-summary/media/jpg/fx-vortex-machine-hall.jpg" alt="Vortex effect"><br><sub>Machine Hall with the Vortex preset</sub></td>
 </tr>
 <tr>
-<td><img src="docs/media/fx-tunnel-mycelium.jpg" alt="Tunnel effect"><br><sub>Mycelium Greenhouse with the Tunnel preset</sub></td>
-<td><img src="docs/media/console-dual-screen.jpg" alt="Console"><br><sub>Dual-screen performance console</sub></td>
+<td><img src="course-summary/media/jpg/fx-tunnel-mycelium.jpg" alt="Tunnel effect"><br><sub>Mycelium Greenhouse with the Tunnel preset</sub></td>
+<td><img src="course-summary/media/jpg/console-dual-screen.jpg" alt="Console"><br><sub>Dual-screen performance console</sub></td>
 </tr>
 </table>
 
@@ -96,6 +96,7 @@ The visuals only depend on the protocol, never on where the sound comes from. Ad
 | `src/rec/` | Parameter recording and playback |
 | `scripts/` | Dev server, checks, probes |
 | `test/` | Unit tests (`node:test`) |
+| `course-summary/` | Course documentation and media |
 
 Docs: [protocol](docs/protocol.md) · [architecture](docs/architecture.md) · [VJ controls](docs/vj-controls.md) · [rehearsal](docs/rehearsal.md) · [navigation](docs/navigation.md) · [start guide (Chinese)](START.md)
 
@@ -109,7 +110,7 @@ Built for the ZHdK MA Interaction Design course *Agentic Coding*, following the 
 
 <table>
 <tr>
-<td><img src="ai/stage1.png" alt="Stage 1"><br><sub>Stage 1 — first splat breathing</sub></td>
-<td><img src="ai/stage2.png" alt="Stage 2"><br><sub>Stage 2 — per-splat GPU audio deformation</sub></td>
+<td><img src="course-summary/media/process/p1-stage1-mock-breathing.jpg" alt="Stage 1"><br><sub>Stage 1 — first splat breathing</sub></td>
+<td><img src="course-summary/media/process/p2-stage2-gpu-deform.jpg" alt="Stage 2"><br><sub>Stage 2 — per-splat GPU audio deformation</sub></td>
 </tr>
 </table>

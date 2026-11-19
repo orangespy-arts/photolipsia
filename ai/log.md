@@ -2,6 +2,12 @@
 
 一次工作一段，新的在上。
 
+## 2026-11-19 — 课程总结从 Unity 仓库搬到本仓库
+
+- 用户要求把课程总结搬到主仓库，并删除 Unity 仓库里的原文件、改成链接。新增 course-summary/README.md，以及 media/jpg（场景、效果、控制台图）和 media/process（早期阶段图），共 6.6MB。PNG 原图（73MB）没有搬过来。
+- 更新链接：总结里的 ai/strategy.md、ai/log.md 改成仓库内相对链接；README 的图片改为引用 course-summary/media/。删除了已提交的 docs/media/ 5 张图（提交 244a0a9 里加的），因为 course-summary/media/jpg 里有完全相同的文件。需要恢复的话，运行 `git restore docs/media`。
+- 验证：两份 README 的本地链接都对应到了实际文件；npm test 220/220 通过。没有改代码，也没有提交。
+
 ## 2026-11-19 — README 改为英文（课程总结配套）
 
 - 用户要求把 README 改成英文。重写 README.md：说明最终是 10 分钟手柄 VJ 演出，列出功能、快速开始、首页入口（按 index.html 实际英文标签）、手柄键位、架构与目录，并链接课程总结和已放弃的 Unity 仓库。新增 docs/media/ 下 5 张 JPG（共 1.4MB），图片来自课程总结的截图。没有改代码。
